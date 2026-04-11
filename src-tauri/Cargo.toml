@@ -1,7 +1,7 @@
 [package]
-name = "slow-set"
+name = "organize-tube"
 version = "0.1.0"
-description = "YouTube Video Looper for Musicians"
+description = "Organize and practice with YouTube videos"
 authors = ["you"]
 edition = "2021"
 

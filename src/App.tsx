@@ -135,7 +135,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Slow Set - YouTube Practice Tool</h1>
+      <h1>Organize Tube - YouTube Practice Tool</h1>
 
       <form className="url-form" onSubmit={handleUrlSubmit}>
         <input
@@ -256,7 +256,7 @@ function App() {
 
       {!videoId && (
         <div className="placeholder">
-          <h2>🎵 Welcome to Slow Set!</h2>
+          <h2>🎵 Welcome to Organize Tube!</h2>
           <p>Enter a YouTube URL above to start practicing music at your own pace.</p>
           <p>Perfect for musicians who need to slow down songs to learn difficult passages.</p>
         </div>

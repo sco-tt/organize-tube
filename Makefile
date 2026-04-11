@@ -1,4 +1,4 @@
-# Slow Set - YouTube Video Looper for Musicians
+# Organize Tube - YouTube Video Organizer for Practice
 # Makefile for build and development commands
 
 .PHONY: help install dev build open clean
@@ -32,11 +32,11 @@ build:
 
 # Build and open the application
 open: build
-	@echo "Opening Slow Set..."
-	@if [ -f "src-tauri/target/release/bundle/macos/Slow Set.app/Contents/MacOS/Slow Set" ]; then \
-		open "src-tauri/target/release/bundle/macos/Slow Set.app"; \
-	elif [ -f "src-tauri/target/release/slow-set" ]; then \
-		./src-tauri/target/release/slow-set; \
+	@echo "Opening Organize Tube..."
+	@if [ -f "src-tauri/target/release/bundle/macos/Organize Tube.app/Contents/MacOS/Organize Tube" ]; then \
+		open "src-tauri/target/release/bundle/macos/Organize Tube.app"; \
+	elif [ -f "src-tauri/target/release/organize-tube" ]; then \
+		./src-tauri/target/release/organize-tube; \
 	else \
 		echo "Build not found. Make sure the build completed successfully."; \
 		exit 1; \

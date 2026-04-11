@@ -1,7 +1,7 @@
 {
-  "productName": "Slow Set",
+  "productName": "Organize Tube",
   "version": "0.1.0",
-  "identifier": "com.slowset.musicpractice",
+  "identifier": "com.organizetube.musicpractice",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420"
@@ -9,7 +9,7 @@
   "app": {
     "windows": [
       {
-        "title": "Slow Set",
+        "title": "Organize Tube",
         "width": 1200,
         "height": 800,
         "resizable": true,
@@ -25,7 +25,7 @@
     "targets": "all",
     "category": "Music",
     "copyright": "",
-    "shortDescription": "YouTube Video Looper for Musicians",
-    "longDescription": "A desktop music practice tool that embeds YouTube videos and provides precise loop controls for musicians."
+    "shortDescription": "Organize and practice with YouTube videos",
+    "longDescription": "A desktop application for organizing YouTube videos with precise loop controls and speed adjustment for practice and study."
   }
 }

@@ -1,4 +1,4 @@
-# YouTube Video Looper - Desktop App Requirements
+# Organize Tube - Desktop App Requirements
 
 ## Project Overview
 Building a desktop music practice tool similar to looper.tube that embeds YouTube videos and provides precise loop controls for musicians. The app allows users to:
