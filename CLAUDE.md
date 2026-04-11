@@ -260,6 +260,12 @@ Switch to Electron if critical blockers discovered in Phase 1 or performance tar
 - Optimistic updates for responsive UI
 - Service layer abstraction over Tauri commands
 
+### Communication Style
+- Keep responses concise and focused by default
+- User will ask for greater detail when needed
+- Avoid excessive explanations or verbose progress updates
+- Get to the point quickly and provide actionable information
+
 ### Workflow Pattern
 1. Load YouTube URL → Creates temporary routine with default settings
 2. Adjust speed, set loops, add notes → Still temporary

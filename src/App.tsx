@@ -2,9 +2,10 @@ import { useState, useRef, useCallback } from "react";
 import { YouTubePlayer, YouTubePlayerHandle } from "./components/YouTubePlayer";
 import { LoopControls } from "./components/LoopControls";
 import { LoopProgressBar } from "./components/LoopProgressBar";
+import { SetsSidebar } from "./components/SetsSidebar";
 import { useLoopControls } from "./hooks/useLoopControls";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { extractVideoId, validateYouTubeUrl, TEST_YOUTUBE_URL } from "./utils/testYouTube";
+import { extractVideoId, validateYouTubeUrl } from "./utils/testYouTube";
 import "./App.css";
 
 function App() {
@@ -43,12 +44,6 @@ function App() {
       setCurrentSpeed(1.0); // Reset speed when loading new video
     }
   }, [videoUrl]);
-
-  const loadTestVideo = useCallback(() => {
-    setVideoUrl(TEST_YOUTUBE_URL);
-    setVideoId(extractVideoId(TEST_YOUTUBE_URL));
-    setCurrentSpeed(1.0);
-  }, []);
 
   const togglePlayPause = useCallback(() => {
     if (playerRef.current) {
@@ -133,134 +128,140 @@ function App() {
 
   const speedOptions = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
+  const handleVideoSelect = useCallback((videoId: string) => {
+    setVideoId(videoId);
+    setVideoUrl(`https://www.youtube.com/watch?v=${videoId}`);
+  }, []);
+
+  const handleUrlBlur = useCallback(() => {
+    if (videoUrl && validateYouTubeUrl(videoUrl)) {
+      const id = extractVideoId(videoUrl);
+      if (id && id !== videoId) {
+        setVideoId(id);
+        setCurrentSpeed(1.0);
+      }
+    }
+  }, [videoUrl, videoId]);
+
   return (
-    <div className="container">
-      <h1>Organize Tube - YouTube Practice Tool</h1>
+    <div className="app-container">
+      <div className="app-layout">
+        <main className="main-content">
+          <h1>Organize Tube</h1>
 
-      <form className="url-form" onSubmit={handleUrlSubmit}>
-        <input
-          type="text"
-          value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
-          placeholder="Enter YouTube URL (e.g., https://youtube.com/watch?v=...)"
-          className="url-input"
-        />
-        <button type="submit">Load Video</button>
-      </form>
-
-      <div className="test-section">
-        <button onClick={loadTestVideo} className="test-btn">
-          🧪 Load Test Video (Guitar Lesson)
-        </button>
-        <button onClick={() => {
-          setVideoUrl("https://www.youtube.com/watch?v=09R8_2nJtjg");
-          setVideoId("09R8_2nJtjg");
-        }} className="test-btn">
-          🎻 Try Violin Lesson
-        </button>
-        <button onClick={() => {
-          setVideoUrl("https://www.youtube.com/watch?v=kxopViU98Xo");
-          setVideoId("kxopViU98Xo");
-        }} className="test-btn">
-          🎵 Try Creative Commons
-        </button>
-      </div>
-
-      {videoId && (
-        <div className="video-section">
-          <div className="video-container">
-            <YouTubePlayer
-              ref={playerRef}
-              videoId={videoId}
-              onReady={handlePlayerReady}
-              onStateChange={handleStateChange}
-              onTimeUpdate={handleTimeUpdate}
-              onDurationChange={handleDurationChange}
+          <form className="url-form" onSubmit={handleUrlSubmit}>
+            <input
+              type="text"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              onBlur={handleUrlBlur}
+              placeholder="Enter YouTube URL (e.g., https://youtube.com/watch?v=...)"
+              className="url-input"
             />
-          </div>
+            <button type="submit">Load Video</button>
+          </form>
 
-          <div className="controls">
-            <div className="playback-info">
-              <span>Current Time: {formatTime(currentTime)}</span>
-              <span>Speed: {currentSpeed}x</span>
-              {isLooping && activeLoop && (
-                <span className="loop-status">🔁 Looping: {activeLoop.name}</span>
-              )}
-            </div>
+          {videoId && (
+            <div className="video-section">
+              <div className="video-container">
+                <YouTubePlayer
+                  ref={playerRef}
+                  videoId={videoId}
+                  onReady={handlePlayerReady}
+                  onStateChange={handleStateChange}
+                  onTimeUpdate={handleTimeUpdate}
+                  onDurationChange={handleDurationChange}
+                />
+              </div>
 
-            <button
-              onClick={togglePlayPause}
-              className="play-pause-btn"
-            >
-              {isPlaying ? '⏸️ Pause' : '▶️ Play'}
-            </button>
+              <div className="controls">
+                <div className="playback-info">
+                  <span>Current Time: {formatTime(currentTime)}</span>
+                  <span>Speed: {currentSpeed}x</span>
+                  {isLooping && activeLoop && (
+                    <span className="loop-status">🔁 Looping: {activeLoop.name}</span>
+                  )}
+                </div>
 
-            <div className="speed-controls">
-              <label>Practice Speed: </label>
-              {speedOptions.map((speed) => (
                 <button
-                  key={speed}
-                  onClick={() => changeSpeed(speed)}
-                  className={currentSpeed === speed ? 'active' : ''}
-                  type="button"
+                  onClick={togglePlayPause}
+                  className="play-pause-btn"
                 >
-                  {speed}x
+                  {isPlaying ? '⏸️ Pause' : '▶️ Play'}
                 </button>
-              ))}
+
+                <div className="speed-controls">
+                  <label>Practice Speed: </label>
+                  {speedOptions.map((speed) => (
+                    <button
+                      key={speed}
+                      onClick={() => changeSpeed(speed)}
+                      className={currentSpeed === speed ? 'active' : ''}
+                      type="button"
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
+
+                <div className="instructions">
+                  <p><strong>How to use:</strong></p>
+                  <ul>
+                    <li>Paste a YouTube URL and click "Load Video"</li>
+                    <li>Use speed controls to slow down for practice</li>
+                    <li>Click Play/Pause or use spacebar in the video</li>
+                    <li>Lower speeds (0.25x - 0.75x) are perfect for learning difficult parts</li>
+                  </ul>
+
+                  <p><strong>⌨️ Keyboard Shortcuts:</strong></p>
+                  <ul>
+                    <li><kbd>Space</kbd> - Play/Pause</li>
+                    <li><kbd>S</kbd> - Set Loop Start</li>
+                    <li><kbd>E</kbd> - Set Loop End</li>
+                    <li><kbd>L</kbd> - Toggle Loop On/Off</li>
+                    <li><kbd>Ctrl/Cmd + ←</kbd> - Seek backward 5s</li>
+                    <li><kbd>Ctrl/Cmd + →</kbd> - Seek forward 5s</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Progress Bar with Loop Visualization */}
+              <LoopProgressBar
+                currentTime={currentTime}
+                duration={duration}
+                activeLoop={activeLoop}
+                onSeekToTime={handleSeekToTime}
+              />
+
+              {/* Loop Controls */}
+              <LoopControls
+                currentTime={currentTime}
+                activeLoop={activeLoop}
+                loops={loops}
+                isLooping={isLooping}
+                onSetLoopStart={setLoopStart}
+                onSetLoopEnd={setLoopEnd}
+                onToggleLoop={toggleLooping}
+                onSelectLoop={selectLoop}
+                onSaveLoop={saveLoop}
+                onDeleteLoop={deleteLoop}
+              />
             </div>
+          )}
 
-            <div className="instructions">
-              <p><strong>How to use:</strong></p>
-              <ul>
-                <li>Paste a YouTube URL and click "Load Video"</li>
-                <li>Use speed controls to slow down for practice</li>
-                <li>Click Play/Pause or use spacebar in the video</li>
-                <li>Lower speeds (0.25x - 0.75x) are perfect for learning difficult parts</li>
-              </ul>
-
-              <p><strong>⌨️ Keyboard Shortcuts:</strong></p>
-              <ul>
-                <li><kbd>Space</kbd> - Play/Pause</li>
-                <li><kbd>S</kbd> - Set Loop Start</li>
-                <li><kbd>E</kbd> - Set Loop End</li>
-                <li><kbd>L</kbd> - Toggle Loop On/Off</li>
-                <li><kbd>Ctrl/Cmd + ←</kbd> - Seek backward 5s</li>
-                <li><kbd>Ctrl/Cmd + →</kbd> - Seek forward 5s</li>
-              </ul>
+          {!videoId && (
+            <div className="placeholder">
+              <h2>🎵 Welcome to Organize Tube!</h2>
+              <p>Enter a YouTube URL above to start practicing music at your own pace.</p>
+              <p>Perfect for musicians who need to slow down songs to learn difficult passages.</p>
             </div>
-          </div>
+          )}
+        </main>
 
-          {/* Progress Bar with Loop Visualization */}
-          <LoopProgressBar
-            currentTime={currentTime}
-            duration={duration}
-            activeLoop={activeLoop}
-            onSeekToTime={handleSeekToTime}
-          />
-
-          {/* Loop Controls */}
-          <LoopControls
-            currentTime={currentTime}
-            activeLoop={activeLoop}
-            loops={loops}
-            isLooping={isLooping}
-            onSetLoopStart={setLoopStart}
-            onSetLoopEnd={setLoopEnd}
-            onToggleLoop={toggleLooping}
-            onSelectLoop={selectLoop}
-            onSaveLoop={saveLoop}
-            onDeleteLoop={deleteLoop}
-          />
-        </div>
-      )}
-
-      {!videoId && (
-        <div className="placeholder">
-          <h2>🎵 Welcome to Organize Tube!</h2>
-          <p>Enter a YouTube URL above to start practicing music at your own pace.</p>
-          <p>Perfect for musicians who need to slow down songs to learn difficult passages.</p>
-        </div>
-      )}
+        <aside className="sidebar">
+          <SetsSidebar onVideoSelect={handleVideoSelect} />
+        </aside>
+      </div>
     </div>
   );
 }
