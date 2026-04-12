@@ -50,6 +50,8 @@
   min-width: 0;
   max-width: 100%;
   min-height: 0;
+  height: calc(100vh - 60px);
+  max-height: calc(100vh - 60px);
   box-sizing: border-box;
   /* Hide scrollbar */
   scrollbar-width: none; /* Firefox */
@@ -142,7 +144,8 @@
   padding: 6px 8px;
 }
 
-.tab-content .sets-sidebar {
+.tab-content .sets-sidebar,
+.tab-content .loop-controls {
   height: 100%;
   width: 100%;
   max-width: 100%;

@@ -49,7 +49,9 @@
 
 .sidebar {
   width: 100%;
-  height: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
   min-width: 0;
   overflow: hidden;
 }
@@ -186,14 +188,31 @@ button.active {
   gap: 6px;
 }
 
+.video-and-controls {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
 .video-container {
   position: relative;
+  flex: 1;
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   background-color: #000;
+}
+
+.controls-sidebar {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .youtube-player-container {
@@ -219,6 +238,33 @@ button.active {
   border-radius: 8px;
 }
 
+.controls-sidebar .playback-row,
+.controls-sidebar .status-info,
+.controls-sidebar .speed-controls,
+.controls-sidebar .help-section {
+  padding: 6px 8px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 170px;
+  max-width: 170px;
+}
+
+.controls-sidebar .speed-controls {
+  font-size: 12px;
+  max-width: 100%;
+}
+
+.controls-sidebar .speed-header label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.controls-sidebar .current-speed {
+  font-size: 10px;
+}
+
+/* Keep original controls for other contexts if needed */
 .controls {
   display: flex;
   flex-direction: column;
@@ -239,6 +285,20 @@ button.active {
   font-weight: 600;
   color: #495057;
   gap: 20px;
+}
+
+.controls-sidebar .playback-row {
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font-size: 12px;
+}
+
+.controls-sidebar .play-pause-btn {
+  width: 100%;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .status-info {
@@ -320,6 +380,18 @@ button.active {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.controls-sidebar .speed-buttons {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.controls-sidebar .speed-buttons button {
+  padding: 4px 8px;
+  font-size: 11px;
+  min-width: 0;
 }
 
 .speed-buttons button {

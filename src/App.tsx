@@ -197,71 +197,73 @@ function App() {
 
           {videoId && (
             <div className="video-section">
-              <div className="video-container">
-                <YouTubePlayer
-                  ref={playerRef}
-                  videoId={videoId}
-                  onReady={handlePlayerReady}
-                  onStateChange={handleStateChange}
-                  onTimeUpdate={handleTimeUpdate}
-                  onDurationChange={handleDurationChange}
-                />
-              </div>
-
-              <div className="controls">
-                <div className="playback-row">
-                  <span>Current Time: {formatTime(currentTime)}</span>
-                  <button
-                    onClick={togglePlayPause}
-                    className="play-pause-btn"
-                  >
-                    {isPlaying ? '⏸️ Pause' : '▶️ Play'}
-                  </button>
-                </div>
-
-                {isLooping && activeLoop && (
-                  <div className="status-info">
-                    <span className="loop-status">🔁 Looping: {activeLoop.name}</span>
-                  </div>
-                )}
-
-                <div className="speed-controls">
-                  <div className="speed-header">
-                    <label>Practice Speed:</label>
-                    <span className="current-speed">Current: {currentSpeed}x</span>
-                  </div>
-                  <div className="speed-buttons">
-                    {essentialSpeeds.map((speed) => (
+              <div className="video-and-controls">
+                <div className="controls-sidebar">
+                  <div className="playback-row">
+                    <span>Current Time:<br/>{formatTime(currentTime)}</span>
                     <button
-                      key={speed}
-                      onClick={() => changeSpeed(speed)}
-                      className={currentSpeed === speed ? 'active' : ''}
-                      type="button"
+                      onClick={togglePlayPause}
+                      className="play-pause-btn"
                     >
-                      {speed}x
-                    </button>
-                  ))}
-                    <button
-                      onClick={speedModal.open}
-                      className="more-speeds-btn"
-                      type="button"
-                      title="More speed options"
-                    >
-                      More...
+                      {isPlaying ? '⏸️ Pause' : '▶️ Play'}
                     </button>
                   </div>
+
+                  {isLooping && activeLoop && (
+                    <div className="status-info">
+                      <span className="loop-status">🔁 Looping: {activeLoop.name}</span>
+                    </div>
+                  )}
+
+                  <div className="speed-controls">
+                    <div className="speed-header">
+                      <label>Practice Speed:</label>
+                      <span className="current-speed">Current: {currentSpeed}x</span>
+                    </div>
+                    <div className="speed-buttons">
+                      {essentialSpeeds.map((speed) => (
+                      <button
+                        key={speed}
+                        onClick={() => changeSpeed(speed)}
+                        className={currentSpeed === speed ? 'active' : ''}
+                        type="button"
+                      >
+                        {speed}x
+                      </button>
+                    ))}
+                      <button
+                        onClick={speedModal.open}
+                        className="more-speeds-btn"
+                        type="button"
+                        title="More speed options"
+                      >
+                        More...
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="help-section">
+                    <button
+                      className="help-button"
+                      onClick={instructionsModal.open}
+                      type="button"
+                      title="Show help and keyboard shortcuts"
+                      style={{ background: 'red', color: 'white', padding: '6px 8px', fontSize: '11px' }}
+                    >
+                      📚 Help & Shortcuts
+                    </button>
+                  </div>
                 </div>
 
-                <div className="help-section">
-                  <button
-                    className="help-button"
-                    onClick={instructionsModal.open}
-                    type="button"
-                    title="Show help and keyboard shortcuts"
-                    style={{ background: 'red', color: 'white', padding: '10px' }}
-                  >
-                    📚 Help & Shortcuts
-                  </button>
+                <div className="video-container">
+                  <YouTubePlayer
+                    ref={playerRef}
+                    videoId={videoId}
+                    onReady={handlePlayerReady}
+                    onStateChange={handleStateChange}
+                    onTimeUpdate={handleTimeUpdate}
+                    onDurationChange={handleDurationChange}
+                  />
                 </div>
               </div>
 

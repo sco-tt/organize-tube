@@ -7,10 +7,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 16px;
+  padding: 12px;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-radius: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .current-label {
@@ -26,20 +26,20 @@
 
 /* Speed Presets */
 .speed-presets {
-  margin-bottom: 32px;
-}
-
-.speed-preset-group {
   margin-bottom: 20px;
 }
 
+.speed-preset-group {
+  margin-bottom: 14px;
+}
+
 .preset-label {
-  margin: 0 0 12px 0;
-  font-size: 1rem;
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #374151;
   border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 4px;
+  padding-bottom: 3px;
 }
 
 .preset-speeds {
