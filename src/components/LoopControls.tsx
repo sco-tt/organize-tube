@@ -32,6 +32,11 @@ export function LoopControls({
   const [newLoopName, setNewLoopName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
+  // Collapsible sections state
+  const [isLoopSettingExpanded, setIsLoopSettingExpanded] = useState(true);
+  const [isSavedLoopsExpanded, setIsSavedLoopsExpanded] = useState(false);
+  const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false);
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -52,9 +57,11 @@ export function LoopControls({
   }, [currentTime, onSetLoopEnd]);
 
   const handleSaveLoop = useCallback(() => {
-    if (tempStart !== null && tempEnd !== null && newLoopName.trim()) {
+    if (tempStart !== null && tempEnd !== null) {
       if (tempEnd > tempStart) {
-        onSaveLoop(newLoopName.trim(), tempStart, tempEnd);
+        // Auto-generate name if none provided
+        const name = newLoopName.trim() || `Loop ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`;
+        onSaveLoop(name, tempStart, tempEnd);
         setTempStart(null);
         setTempEnd(null);
         setNewLoopName('');
@@ -65,11 +72,35 @@ export function LoopControls({
     }
   }, [tempStart, tempEnd, newLoopName, onSaveLoop]);
 
+  const handleQuickSave = useCallback(() => {
+    if (tempStart !== null && tempEnd !== null) {
+      if (tempEnd > tempStart) {
+        // Auto-save with generated name
+        const name = `Loop ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`;
+        onSaveLoop(name, tempStart, tempEnd);
+        setTempStart(null);
+        setTempEnd(null);
+        setNewLoopName('');
+      } else {
+        alert('End time must be after start time');
+      }
+    }
+  }, [tempStart, tempEnd, onSaveLoop]);
+
   const handleClearTemp = useCallback(() => {
     setTempStart(null);
     setTempEnd(null);
     setShowSaveDialog(false);
   }, []);
+
+  const handlePlayLoop = useCallback((loop: LoopSegment) => {
+    // Select the loop
+    onSelectLoop(loop);
+    // If not already looping, start looping
+    if (!isLooping) {
+      onToggleLoop();
+    }
+  }, [onSelectLoop, onToggleLoop, isLooping]);
 
   const hasValidTempLoop = tempStart !== null && tempEnd !== null && tempEnd > tempStart;
 
@@ -96,34 +127,49 @@ export function LoopControls({
       )}
 
       {/* Loop Point Setting */}
-      <div className="loop-setting">
-        <div className="time-display">
-          Current: <strong>{formatTime(currentTime)}</strong>
-        </div>
+      <div className="collapsible-section">
+        <button
+          className="section-header"
+          onClick={() => setIsLoopSettingExpanded(!isLoopSettingExpanded)}
+        >
+          <span>⚙️ Create Loop</span>
+          <span className={`expand-icon ${isLoopSettingExpanded ? 'expanded' : ''}`}>▼</span>
+        </button>
 
-        <div className="loop-buttons">
-          <button onClick={handleSetStart} className="set-start">
-            📍 Set Start ({tempStart !== null ? formatTime(tempStart) : '--:--'})
-          </button>
-          <button onClick={handleSetEnd} className="set-end">
-            🏁 Set End ({tempEnd !== null ? formatTime(tempEnd) : '--:--'})
-          </button>
-        </div>
-
-        {hasValidTempLoop && (
-          <div className="temp-loop">
-            <div className="temp-loop-info">
-              <span>New Loop: {formatTime(tempStart!)} → {formatTime(tempEnd!)}</span>
-              <span>Duration: {formatTime(tempEnd! - tempStart!)}</span>
+        {isLoopSettingExpanded && (
+          <div className="loop-setting">
+            <div className="time-display">
+              Current: <strong>{formatTime(currentTime)}</strong>
             </div>
-            <div className="temp-loop-actions">
-              <button onClick={() => setShowSaveDialog(true)} className="save-loop">
-                💾 Save Loop
+
+            <div className="loop-buttons">
+              <button onClick={handleSetStart} className="set-start">
+                📍 Set Start ({tempStart !== null ? formatTime(tempStart) : '--:--'})
               </button>
-              <button onClick={handleClearTemp} className="clear-temp">
-                ❌ Clear
+              <button onClick={handleSetEnd} className="set-end">
+                🏁 Set End ({tempEnd !== null ? formatTime(tempEnd) : '--:--'})
               </button>
             </div>
+
+            {hasValidTempLoop && (
+              <div className="temp-loop">
+                <div className="temp-loop-info">
+                  <span>New Loop: {formatTime(tempStart!)} → {formatTime(tempEnd!)}</span>
+                  <span>Duration: {formatTime(tempEnd! - tempStart!)}</span>
+                </div>
+                <div className="temp-loop-actions">
+                  <button onClick={handleQuickSave} className="save-loop-quick">
+                    💾 Save Loop
+                  </button>
+                  <button onClick={() => setShowSaveDialog(true)} className="save-loop-custom">
+                    ✏️ Custom Name
+                  </button>
+                  <button onClick={handleClearTemp} className="clear-temp">
+                    ❌ Clear
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -147,52 +193,75 @@ export function LoopControls({
 
       {/* Saved Loops List */}
       {loops.length > 0 && (
-        <div className="saved-loops">
-          <h4>Saved Loops</h4>
-          <div className="loops-list">
-            {loops.map((loop) => (
-              <div key={loop.id} className={`loop-item ${loop.id === activeLoop?.id ? 'active' : ''}`}>
-                <div className="loop-details">
-                  <span className="loop-name">{loop.name}</span>
-                  <span className="loop-time">
-                    {formatTime(loop.startTime)} → {formatTime(loop.endTime)}
-                  </span>
-                </div>
-                <div className="loop-actions">
-                  <button
-                    onClick={() => onSelectLoop(loop)}
-                    className="select-loop"
-                  >
-                    {loop.id === activeLoop?.id ? '✅' : '▶️'}
-                  </button>
-                  <button
-                    onClick={() => onDeleteLoop(loop.id)}
-                    className="delete-loop"
-                  >
-                    🗑️
-                  </button>
-                </div>
+        <div className="collapsible-section">
+          <button
+            className="section-header"
+            onClick={() => setIsSavedLoopsExpanded(!isSavedLoopsExpanded)}
+          >
+            <span>💾 Saved Loops ({loops.length})</span>
+            <span className={`expand-icon ${isSavedLoopsExpanded ? 'expanded' : ''}`}>▼</span>
+          </button>
+
+          {isSavedLoopsExpanded && (
+            <div className="saved-loops">
+              <div className="loops-list">
+                {loops.map((loop) => (
+                  <div key={loop.id} className={`loop-item ${loop.id === activeLoop?.id ? 'active' : ''}`}>
+                    <div className="loop-details">
+                      <span className="loop-name">{loop.name}</span>
+                      <span className="loop-time">
+                        {formatTime(loop.startTime)} → {formatTime(loop.endTime)}
+                      </span>
+                    </div>
+                    <div className="loop-actions">
+                      <button
+                        onClick={() => handlePlayLoop(loop)}
+                        className="play-loop"
+                        title="Play this loop"
+                      >
+                        ▶️
+                      </button>
+                      <button
+                        onClick={() => onDeleteLoop(loop.id)}
+                        className="delete-loop"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          {activeLoop && (
-            <button onClick={() => onSelectLoop(null)} className="clear-selection">
-              Clear Selection
-            </button>
+              {activeLoop && (
+                <button onClick={() => onSelectLoop(null)} className="clear-selection">
+                  Exit Loop
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
 
       {/* Instructions */}
-      <div className="loop-instructions">
-        <p><strong>How to create loops:</strong></p>
-        <ol>
-          <li>Play video and pause at desired start point</li>
-          <li>Click "📍 Set Start" to mark loop beginning</li>
-          <li>Continue playing to desired end point</li>
-          <li>Click "🏁 Set End" to mark loop end</li>
-          <li>Save with a name for future use</li>
-        </ol>
+      <div className="collapsible-section">
+        <button
+          className="section-header"
+          onClick={() => setIsInstructionsExpanded(!isInstructionsExpanded)}
+        >
+          <span>❓ How to Create Loops</span>
+          <span className={`expand-icon ${isInstructionsExpanded ? 'expanded' : ''}`}>▼</span>
+        </button>
+
+        {isInstructionsExpanded && (
+          <div className="loop-instructions">
+            <ol>
+              <li>Play video and pause at desired start point</li>
+              <li>Click "📍 Set Start" to mark loop beginning</li>
+              <li>Continue playing to desired end point</li>
+              <li>Click "🏁 Set End" to mark loop end</li>
+              <li>Save with a name for future use</li>
+            </ol>
+          </div>
+        )}
       </div>
     </div>
   );

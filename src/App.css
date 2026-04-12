@@ -1,25 +1,99 @@
-.container {
+.app-container {
   margin: 0;
-  padding: 20px;
+  padding: 0;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* Hide scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.app-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Global scrollbar hiding for all scrollable areas */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  flex: 1;
+  min-height: 0;
+  height: 100vh;
+  gap: 0;
+}
+
+.main-content {
+  padding: 12px 8px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Hide scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.main-content::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.sidebar {
+  width: 100%;
+  height: 100vh;
   min-height: 100vh;
-  gap: 20px;
+  max-height: 100vh;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* App Header Layout */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
 h1 {
-  margin-bottom: 30px;
+  margin: 0;
   color: #333;
-  text-align: center;
-  font-size: 2.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.load-video-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.load-video-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .url-form {
   display: flex;
   gap: 10px;
   width: 100%;
-  max-width: 600px;
   align-items: center;
 }
 
@@ -57,40 +131,88 @@ button.active {
   background-color: #24c8db;
 }
 
-.test-section {
+.help-section {
   display: flex;
-  justify-content: center;
-  margin: -10px 0 10px 0;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
-.test-btn {
-  background-color: #ffc107;
-  color: #212529;
+.help-button {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
   padding: 8px 16px;
   font-size: 14px;
   border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.test-btn:hover {
-  background-color: #e0a800;
+.help-button:hover {
+  background-color: #e5e7eb;
+  border-color: #9ca3af;
+  color: #1f2937;
 }
+
+.help-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.more-speeds-btn {
+  background-color: #f8f9fa;
+  color: #495057;
+  border: 1px dashed #adb5bd;
+  padding: 12px 20px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.more-speeds-btn:hover {
+  background-color: #e9ecef;
+  border-color: #6c757d;
+  color: #212529;
+}
+
 
 .video-section {
   width: 100%;
-  max-width: 900px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 6px;
+}
+
+.video-and-controls {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
 }
 
 .video-container {
   position: relative;
+  flex: 1;
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   background-color: #000;
+}
+
+.controls-sidebar {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .youtube-player-container {
@@ -116,24 +238,77 @@ button.active {
   border-radius: 8px;
 }
 
+.controls-sidebar .playback-row,
+.controls-sidebar .status-info,
+.controls-sidebar .speed-controls,
+.controls-sidebar .help-section {
+  padding: 6px 8px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 170px;
+  max-width: 170px;
+}
+
+.controls-sidebar .speed-controls {
+  font-size: 12px;
+  max-width: 100%;
+}
+
+.controls-sidebar .speed-header label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.controls-sidebar .current-speed {
+  font-size: 10px;
+}
+
+/* Keep original controls for other contexts if needed */
 .controls {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 25px;
+  gap: 8px;
+  padding: 12px;
   background-color: #f8f9fa;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.playback-info {
+.playback-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
+  padding: 8px 12px;
   background-color: #e9ecef;
   border-radius: 8px;
   font-weight: 600;
+  color: #495057;
+  gap: 20px;
+}
+
+.controls-sidebar .playback-row {
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font-size: 12px;
+}
+
+.controls-sidebar .play-pause-btn {
+  width: 100%;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.status-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  font-weight: 500;
   color: #495057;
   flex-wrap: wrap;
   gap: 10px;
@@ -154,12 +329,15 @@ button.active {
 }
 
 .play-pause-btn {
-  padding: 18px 35px;
-  font-size: 20px;
+  padding: 12px 24px;
+  font-size: 16px;
   background-color: #28a745;
-  align-self: center;
-  border-radius: 12px;
-  min-width: 160px;
+  border-radius: 8px;
+  min-width: 120px;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
 }
 
 .play-pause-btn:hover {
@@ -168,36 +346,70 @@ button.active {
 
 .speed-controls {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: 15px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
   background-color: #fff;
   border-radius: 8px;
   border: 1px solid #dee2e6;
 }
 
-.speed-controls label {
-  font-weight: 600;
-  margin-right: 15px;
-  color: #495057;
-  font-size: 16px;
+.speed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
 }
 
-.speed-controls button {
-  padding: 10px 18px;
+.speed-header label {
+  font-weight: 600;
+  color: #495057;
   font-size: 14px;
-  min-width: 55px;
+  margin: 0;
+}
+
+.current-speed {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.speed-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.controls-sidebar .speed-buttons {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.controls-sidebar .speed-buttons button {
+  padding: 4px 8px;
+  font-size: 11px;
+  min-width: 0;
+}
+
+.speed-buttons button {
+  padding: 6px 12px;
+  font-size: 12px;
+  min-width: 45px;
   background-color: #6c757d;
   border-radius: 6px;
+  color: white;
+  border: none;
+  cursor: pointer;
 }
 
-.speed-controls button:hover {
+.speed-buttons button:hover {
   background-color: #5a6268;
 }
 
-.speed-controls button.active {
+.speed-buttons button.active {
   background-color: #24c8db;
 }
 
@@ -244,12 +456,13 @@ kbd {
 
 .placeholder {
   text-align: center;
-  padding: 80px 40px;
+  padding: 40px 20px;
   color: #666;
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   border-radius: 16px;
   border: 2px dashed #ddd;
-  max-width: 500px;
+  max-width: none;
+  width: 100%;
 }
 
 .placeholder h2 {

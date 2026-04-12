@@ -110,9 +110,22 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
   }, [playerRef]);
 
   const toggleLooping = useCallback(() => {
-    if (!activeLoop) {
-      alert('Please select a loop first');
+    // Check if we have either an active loop OR temp start/end points
+    if (!activeLoop && (tempStart === null || tempEnd === null)) {
+      alert('Please set loop start (S) and end (E) points first');
       return;
+    }
+
+    // If we have temp points but no active loop, create a temporary active loop
+    if (!activeLoop && tempStart !== null && tempEnd !== null) {
+      const tempLoop: LoopSegment = {
+        id: 'temp-loop',
+        name: `Temp Loop ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`,
+        startTime: tempStart,
+        endTime: tempEnd,
+        isActive: true
+      };
+      setActiveLoop(tempLoop);
     }
 
     setIsLooping(prev => {
@@ -120,13 +133,14 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
 
       // If starting to loop, seek to loop start
       if (newLooping && playerRef.current) {
-        playerRef.current.seekTo(activeLoop.startTime);
+        const loopToUse = activeLoop || { startTime: tempStart!, endTime: tempEnd! };
+        playerRef.current.seekTo(loopToUse.startTime);
         lastSeekTimeRef.current = Date.now();
       }
 
       return newLooping;
     });
-  }, [activeLoop, playerRef]);
+  }, [activeLoop, tempStart, tempEnd, playerRef]);
 
   const clearLoops = useCallback(() => {
     setLoops([]);
