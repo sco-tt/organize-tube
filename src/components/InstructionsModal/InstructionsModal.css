@@ -1,0 +1,144 @@
+.instructions-content {
+  line-height: 1.6;
+}
+
+.instructions-section {
+  margin-bottom: 32px;
+}
+
+.instructions-section:last-of-type {
+  margin-bottom: 24px;
+}
+
+.instructions-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+.instructions-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.instructions-section li {
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+/* Keyboard shortcuts grid */
+.keyboard-shortcuts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.shortcut-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shortcut-item kbd {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  min-width: 100px;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.shortcut-item span {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* Pro tip box */
+.instructions-tip {
+  background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 0.9rem;
+  color: #92400e;
+  margin-top: 8px;
+}
+
+.instructions-tip strong {
+  color: #78350f;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .instructions-section h3 {
+    color: #f9fafb;
+    border-bottom-color: #4b5563;
+  }
+
+  .instructions-section li {
+    color: #d1d5db;
+  }
+
+  .shortcut-item kbd {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .shortcut-item span {
+    color: #9ca3af;
+  }
+
+  .instructions-tip {
+    background: linear-gradient(135deg, #451a03 0%, #92400e 100%);
+    border-color: #d97706;
+    color: #fbbf24;
+  }
+
+  .instructions-tip strong {
+    color: #fcd34d;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .keyboard-shortcuts {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .shortcut-item kbd {
+    min-width: 80px;
+    font-size: 0.8rem;
+    padding: 3px 6px;
+  }
+
+  .shortcut-item span {
+    font-size: 0.85rem;
+  }
+
+  .instructions-section {
+    margin-bottom: 24px;
+  }
+
+  .instructions-section h3 {
+    font-size: 1rem;
+  }
+}

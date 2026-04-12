@@ -7,6 +7,7 @@ interface KeyboardShortcutsProps {
   onTogglePlayPause: () => void;
   onSeekBackward: () => void;
   onSeekForward: () => void;
+  onShowHelp?: () => void;
 }
 
 export function useKeyboardShortcuts({
@@ -15,60 +16,91 @@ export function useKeyboardShortcuts({
   onToggleLoop,
   onTogglePlayPause,
   onSeekBackward,
-  onSeekForward
+  onSeekForward,
+  onShowHelp
 }: KeyboardShortcutsProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Don't trigger shortcuts when typing in inputs
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      if (event.target instanceof HTMLInputElement ||
+          event.target instanceof HTMLTextAreaElement ||
+          event.target instanceof HTMLSelectElement) {
         return;
       }
 
-      // Prevent default for our shortcuts
-      const preventDefaultKeys = ['Space', 'KeyL', 'KeyS', 'KeyE', 'ArrowLeft', 'ArrowRight'];
-      if (preventDefaultKeys.includes(event.code)) {
-        event.preventDefault();
+      // Don't trigger when modals are open
+      if (document.querySelector('.modal')) {
+        return;
       }
 
-      switch (event.code) {
-        case 'Space':
+      const key = event.key.toLowerCase();
+
+      // Handle shortcuts
+      switch (key) {
+        case ' ':
+          event.preventDefault();
+          event.stopPropagation();
           onTogglePlayPause();
           break;
-        case 'KeyS':
-          onSetLoopStart();
+        case 's':
+          if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            event.stopPropagation();
+            onSetLoopStart();
+          }
           break;
-        case 'KeyE':
-          onSetLoopEnd();
+        case 'e':
+          if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            event.stopPropagation();
+            onSetLoopEnd();
+          }
           break;
-        case 'KeyL':
-          onToggleLoop();
+        case 'r':
+          if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            event.stopPropagation();
+            onToggleLoop();
+          }
           break;
-        case 'ArrowLeft':
+        case 'arrowleft':
           if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            event.stopPropagation();
             onSeekBackward();
           }
           break;
-        case 'ArrowRight':
+        case 'arrowright':
           if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            event.stopPropagation();
             onSeekForward();
+          }
+          break;
+        case '?':
+          if (onShowHelp) {
+            event.preventDefault();
+            event.stopPropagation();
+            onShowHelp();
           }
           break;
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [onSetLoopStart, onSetLoopEnd, onToggleLoop, onTogglePlayPause, onSeekBackward, onSeekForward]);
+  }, [onSetLoopStart, onSetLoopEnd, onToggleLoop, onTogglePlayPause, onSeekBackward, onSeekForward, onShowHelp]);
 }
 
 export const KEYBOARD_SHORTCUTS = {
   PLAY_PAUSE: 'Space',
   SET_LOOP_START: 'S',
   SET_LOOP_END: 'E',
-  TOGGLE_LOOP: 'L',
+  TOGGLE_LOOP: 'R',
   SEEK_BACKWARD: 'Ctrl/Cmd + ←',
-  SEEK_FORWARD: 'Ctrl/Cmd + →'
+  SEEK_FORWARD: 'Ctrl/Cmd + →',
+  HELP: 'Shift + ?'
 } as const;

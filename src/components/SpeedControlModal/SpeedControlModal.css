@@ -1,0 +1,259 @@
+.speed-modal-content {
+  padding: 0;
+}
+
+.current-speed-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.current-label {
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.current-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #495057;
+}
+
+/* Speed Presets */
+.speed-presets {
+  margin-bottom: 32px;
+}
+
+.speed-preset-group {
+  margin-bottom: 20px;
+}
+
+.preset-label {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 4px;
+}
+
+.preset-speeds {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* All Speeds Section */
+.all-speeds-section {
+  margin-bottom: 32px;
+}
+
+.all-speeds-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.all-speeds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+/* Speed Option Buttons */
+.speed-option {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.speed-option:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+}
+
+.speed-option.active {
+  background: #0d6efd;
+  border-color: #0d6efd;
+  color: white;
+  box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
+}
+
+/* Custom Speed Section */
+.custom-speed-section {
+  margin-bottom: 32px;
+}
+
+.custom-speed-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.custom-speed-input {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.custom-speed-input input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.custom-speed-input input:focus {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+  border-color: #0d6efd;
+}
+
+.apply-custom-speed {
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.apply-custom-speed:hover {
+  background: #218838;
+}
+
+.custom-speed-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Practice Tips */
+.speed-tips {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.speed-tips h4 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.speed-tips ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.speed-tips li {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #495057;
+}
+
+.speed-tips strong {
+  color: #374151;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .current-speed-display {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+  }
+
+  .current-label {
+    color: #d1d5db;
+  }
+
+  .current-value {
+    color: #f9fafb;
+  }
+
+  .preset-label,
+  .all-speeds-section h4,
+  .custom-speed-section h4,
+  .speed-tips h4 {
+    color: #f9fafb;
+    border-bottom-color: #4b5563;
+  }
+
+  .speed-option {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+
+  .speed-option:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+  }
+
+  .speed-option.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+  }
+
+  .custom-speed-input input {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+
+  .custom-speed-hint {
+    color: #9ca3af;
+  }
+
+  .speed-tips {
+    background: #374151;
+  }
+
+  .speed-tips li {
+    color: #d1d5db;
+  }
+
+  .speed-tips strong {
+    color: #f9fafb;
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+  .preset-speeds {
+    justify-content: center;
+  }
+
+  .all-speeds-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .custom-speed-input {
+    flex-direction: column;
+  }
+
+  .apply-custom-speed {
+    width: 100%;
+  }
+}

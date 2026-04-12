@@ -129,7 +129,21 @@
   justify-content: center;
 }
 
-.save-loop {
+.save-loop-quick {
+  background-color: #28a745;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.save-loop-quick:hover {
+  background-color: #218838;
+}
+
+.save-loop-custom {
   background-color: #007bff;
   color: white;
   padding: 8px 16px;
@@ -139,7 +153,7 @@
   font-weight: 500;
 }
 
-.save-loop:hover {
+.save-loop-custom:hover {
   background-color: #0056b3;
 }
 
@@ -258,7 +272,7 @@
   gap: 8px;
 }
 
-.select-loop,
+.play-loop,
 .delete-loop {
   padding: 6px 10px;
   border: none;
@@ -268,7 +282,7 @@
   font-size: 16px;
 }
 
-.select-loop:hover {
+.play-loop:hover {
   background-color: #e9ecef;
 }
 
@@ -367,4 +381,82 @@
     border-color: #2a5a62;
     color: #a0d4dd;
   }
+
+  .section-header {
+    background-color: #3d3d3d;
+    border-color: #555;
+    color: #fff;
+  }
+
+  .section-header:hover {
+    background-color: #4d4d4d;
+  }
+
+  .expand-icon {
+    color: #ccc;
+  }
+}
+
+/* Collapsible Section Styles */
+.collapsible-section {
+  margin-bottom: 16px;
+}
+
+.section-header {
+  width: 100%;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: #495057;
+  text-align: left;
+}
+
+.section-header:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.section-header:focus {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+.section-header span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expand-icon {
+  transition: transform 0.2s ease;
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+/* Adjust existing sections to work with collapsible */
+.collapsible-section .loop-setting {
+  margin-top: 12px;
+}
+
+.collapsible-section .saved-loops {
+  margin-top: 12px;
+}
+
+.collapsible-section .saved-loops h4 {
+  display: none; /* Header is now in section-header */
+}
+
+.collapsible-section .loop-instructions {
+  margin-top: 12px;
 }

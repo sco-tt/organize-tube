@@ -1,10 +1,14 @@
 import { useState, useRef, useCallback } from "react";
 import { YouTubePlayer, YouTubePlayerHandle } from "./components/YouTubePlayer";
-import { LoopControls } from "./components/LoopControls";
 import { LoopProgressBar } from "./components/LoopProgressBar";
-import { SetsSidebar } from "./components/SetsSidebar";
+import { SidebarTabs } from "./components/SidebarTabs/SidebarTabs";
+import { InstructionsModal } from "./components/InstructionsModal/InstructionsModal";
+import { SpeedControlModal } from "./components/SpeedControlModal/SpeedControlModal";
+import { LoadVideoModal } from "./components/LoadVideoModal/LoadVideoModal";
+import { Toast } from "./components/Toast/Toast";
 import { useLoopControls } from "./hooks/useLoopControls";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useModal } from "./hooks/useModal";
 import { extractVideoId, validateYouTubeUrl } from "./utils/testYouTube";
 import "./App.css";
 
@@ -15,6 +19,13 @@ function App() {
   const [currentSpeed, setCurrentSpeed] = useState(1.0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  const instructionsModal = useModal();
+  const speedModal = useModal();
+  const loadVideoModal = useModal();
+
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
 
   const playerRef = useRef<YouTubePlayerHandle>(null);
 
@@ -28,7 +39,8 @@ function App() {
     saveLoop,
     deleteLoop,
     selectLoop,
-    toggleLooping
+    toggleLooping,
+    clearLoops
   } = useLoopControls({ playerRef, isPlaying });
 
 
@@ -42,8 +54,9 @@ function App() {
     if (id) {
       setVideoId(id);
       setCurrentSpeed(1.0); // Reset speed when loading new video
+      clearLoops(); // Clear any temporary loops
     }
-  }, [videoUrl]);
+  }, [videoUrl, clearLoops]);
 
   const togglePlayPause = useCallback(() => {
     if (playerRef.current) {
@@ -100,24 +113,39 @@ function App() {
     }
   }, [currentTime, duration]);
 
+  const showToastNotification = useCallback((message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+  }, []);
+
   const handleSetLoopStartShortcut = useCallback(() => {
     const time = Math.floor(currentTime * 100) / 100;
     setLoopStart(time);
-  }, [currentTime, setLoopStart]);
+    showToastNotification(`Loop start set: ${formatTime(time)}`);
+  }, [currentTime, setLoopStart, showToastNotification]);
 
   const handleSetLoopEndShortcut = useCallback(() => {
     const time = Math.floor(currentTime * 100) / 100;
     setLoopEnd(time);
-  }, [currentTime, setLoopEnd]);
+    showToastNotification(`Loop end set: ${formatTime(time)}`);
+  }, [currentTime, setLoopEnd, showToastNotification]);
+
+  const handleToggleLoopShortcut = useCallback(() => {
+    toggleLooping();
+    // Show appropriate toast based on current loop state
+    const message = isLooping ? 'Temporary Loop Stopped' : 'Temporary Loop Started';
+    showToastNotification(message);
+  }, [toggleLooping, isLooping, showToastNotification]);
 
   // Keyboard shortcuts (must be after function declarations)
   useKeyboardShortcuts({
     onSetLoopStart: handleSetLoopStartShortcut,
     onSetLoopEnd: handleSetLoopEndShortcut,
-    onToggleLoop: toggleLooping,
+    onToggleLoop: handleToggleLoopShortcut,
     onTogglePlayPause: togglePlayPause,
     onSeekBackward: handleSeekBackward,
-    onSeekForward: handleSeekForward
+    onSeekForward: handleSeekForward,
+    onShowHelp: instructionsModal.open
   });
 
   const formatTime = (seconds: number): string => {
@@ -126,12 +154,21 @@ function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const speedOptions = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+  const essentialSpeeds = [0.5, 0.7, 0.8, 0.9, 1.0];
+  const allSpeedOptions = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
   const handleVideoSelect = useCallback((videoId: string) => {
     setVideoId(videoId);
     setVideoUrl(`https://www.youtube.com/watch?v=${videoId}`);
-  }, []);
+    clearLoops(); // Clear any temporary loops
+  }, [clearLoops]);
+
+  const handleVideoLoad = useCallback((videoId: string, videoUrl: string) => {
+    setVideoId(videoId);
+    setVideoUrl(videoUrl);
+    setCurrentSpeed(1.0); // Reset speed when loading new video
+    clearLoops(); // Clear any temporary loops
+  }, [clearLoops]);
 
   const handleUrlBlur = useCallback(() => {
     if (videoUrl && validateYouTubeUrl(videoUrl)) {
@@ -144,22 +181,19 @@ function App() {
   }, [videoUrl, videoId]);
 
   return (
-    <div className="app-container">
+    <div className="app-container" tabIndex={0}>
       <div className="app-layout">
         <main className="main-content">
-          <h1>Organize Tube</h1>
-
-          <form className="url-form" onSubmit={handleUrlSubmit}>
-            <input
-              type="text"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              onBlur={handleUrlBlur}
-              placeholder="Enter YouTube URL (e.g., https://youtube.com/watch?v=...)"
-              className="url-input"
-            />
-            <button type="submit">Load Video</button>
-          </form>
+          <div className="app-header">
+            <h1>Organize Tube</h1>
+            <button
+              onClick={loadVideoModal.open}
+              className="load-video-button"
+              type="button"
+            >
+              📹 Load Video
+            </button>
+          </div>
 
           {videoId && (
             <div className="video-section">
@@ -175,24 +209,29 @@ function App() {
               </div>
 
               <div className="controls">
-                <div className="playback-info">
+                <div className="playback-row">
                   <span>Current Time: {formatTime(currentTime)}</span>
-                  <span>Speed: {currentSpeed}x</span>
-                  {isLooping && activeLoop && (
-                    <span className="loop-status">🔁 Looping: {activeLoop.name}</span>
-                  )}
+                  <button
+                    onClick={togglePlayPause}
+                    className="play-pause-btn"
+                  >
+                    {isPlaying ? '⏸️ Pause' : '▶️ Play'}
+                  </button>
                 </div>
 
-                <button
-                  onClick={togglePlayPause}
-                  className="play-pause-btn"
-                >
-                  {isPlaying ? '⏸️ Pause' : '▶️ Play'}
-                </button>
+                {isLooping && activeLoop && (
+                  <div className="status-info">
+                    <span className="loop-status">🔁 Looping: {activeLoop.name}</span>
+                  </div>
+                )}
 
                 <div className="speed-controls">
-                  <label>Practice Speed: </label>
-                  {speedOptions.map((speed) => (
+                  <div className="speed-header">
+                    <label>Practice Speed:</label>
+                    <span className="current-speed">Current: {currentSpeed}x</span>
+                  </div>
+                  <div className="speed-buttons">
+                    {essentialSpeeds.map((speed) => (
                     <button
                       key={speed}
                       onClick={() => changeSpeed(speed)}
@@ -202,26 +241,27 @@ function App() {
                       {speed}x
                     </button>
                   ))}
+                    <button
+                      onClick={speedModal.open}
+                      className="more-speeds-btn"
+                      type="button"
+                      title="More speed options"
+                    >
+                      More...
+                    </button>
+                  </div>
                 </div>
 
-                <div className="instructions">
-                  <p><strong>How to use:</strong></p>
-                  <ul>
-                    <li>Paste a YouTube URL and click "Load Video"</li>
-                    <li>Use speed controls to slow down for practice</li>
-                    <li>Click Play/Pause or use spacebar in the video</li>
-                    <li>Lower speeds (0.25x - 0.75x) are perfect for learning difficult parts</li>
-                  </ul>
-
-                  <p><strong>⌨️ Keyboard Shortcuts:</strong></p>
-                  <ul>
-                    <li><kbd>Space</kbd> - Play/Pause</li>
-                    <li><kbd>S</kbd> - Set Loop Start</li>
-                    <li><kbd>E</kbd> - Set Loop End</li>
-                    <li><kbd>L</kbd> - Toggle Loop On/Off</li>
-                    <li><kbd>Ctrl/Cmd + ←</kbd> - Seek backward 5s</li>
-                    <li><kbd>Ctrl/Cmd + →</kbd> - Seek forward 5s</li>
-                  </ul>
+                <div className="help-section">
+                  <button
+                    className="help-button"
+                    onClick={instructionsModal.open}
+                    type="button"
+                    title="Show help and keyboard shortcuts"
+                    style={{ background: 'red', color: 'white', padding: '10px' }}
+                  >
+                    📚 Help & Shortcuts
+                  </button>
                 </div>
               </div>
 
@@ -231,20 +271,8 @@ function App() {
                 duration={duration}
                 activeLoop={activeLoop}
                 onSeekToTime={handleSeekToTime}
-              />
-
-              {/* Loop Controls */}
-              <LoopControls
-                currentTime={currentTime}
-                activeLoop={activeLoop}
-                loops={loops}
-                isLooping={isLooping}
                 onSetLoopStart={setLoopStart}
                 onSetLoopEnd={setLoopEnd}
-                onToggleLoop={toggleLooping}
-                onSelectLoop={selectLoop}
-                onSaveLoop={saveLoop}
-                onDeleteLoop={deleteLoop}
               />
             </div>
           )}
@@ -259,9 +287,47 @@ function App() {
         </main>
 
         <aside className="sidebar">
-          <SetsSidebar onVideoSelect={handleVideoSelect} />
+          <SidebarTabs
+            currentTime={currentTime}
+            activeLoop={activeLoop}
+            loops={loops}
+            isLooping={isLooping}
+            onSetLoopStart={setLoopStart}
+            onSetLoopEnd={setLoopEnd}
+            onToggleLoop={toggleLooping}
+            onSelectLoop={selectLoop}
+            onSaveLoop={saveLoop}
+            onDeleteLoop={deleteLoop}
+            onVideoSelect={handleVideoSelect}
+          />
         </aside>
       </div>
+
+      <InstructionsModal
+        isOpen={instructionsModal.isOpen}
+        onClose={instructionsModal.close}
+      />
+
+      <SpeedControlModal
+        isOpen={speedModal.isOpen}
+        onClose={speedModal.close}
+        currentSpeed={currentSpeed}
+        onSpeedChange={changeSpeed}
+        allSpeedOptions={allSpeedOptions}
+      />
+
+      <LoadVideoModal
+        isOpen={loadVideoModal.isOpen}
+        onClose={loadVideoModal.close}
+        onVideoLoad={handleVideoLoad}
+        currentVideoUrl={videoUrl}
+      />
+
+      <Toast
+        message={toastMessage}
+        show={showToast}
+        onHide={() => setShowToast(false)}
+      />
     </div>
   );
 }
