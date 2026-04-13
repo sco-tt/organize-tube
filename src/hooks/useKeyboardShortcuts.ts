@@ -87,10 +87,41 @@ export function useKeyboardShortcuts({
       }
     };
 
+    // Handle clicks to remove focus from YouTube iframe
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Element;
+      // If clicking outside the video player, blur any focused iframes
+      if (!target.closest('.youtube-player-container')) {
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(iframe => {
+          if (iframe.contentWindow) {
+            iframe.blur();
+          }
+        });
+        // Ensure document has focus for keyboard shortcuts
+        if (document.activeElement && document.activeElement !== document.body) {
+          (document.activeElement as HTMLElement).blur();
+        }
+        document.body.focus();
+      }
+    };
+
+    // Also add a periodic focus check to ensure shortcuts work
+    const focusInterval = setInterval(() => {
+      // If no specific element needs focus, ensure body has focus for shortcuts
+      if (document.activeElement === document.documentElement ||
+          (document.activeElement as HTMLElement)?.tagName === 'IFRAME') {
+        document.body.focus();
+      }
+    }, 1000);
+
     document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('click', handleClick, true);
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('click', handleClick, true);
+      clearInterval(focusInterval);
     };
   }, [onSetLoopStart, onSetLoopEnd, onToggleLoop, onTogglePlayPause, onSeekBackward, onSeekForward, onShowHelp]);
 }

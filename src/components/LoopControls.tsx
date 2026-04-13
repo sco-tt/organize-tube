@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { LoopSegment } from '../types/loops';
+import { EditableTime } from './EditableTime';
 import './LoopControls.css';
 
 interface LoopControlsProps {
@@ -7,12 +8,17 @@ interface LoopControlsProps {
   activeLoop: LoopSegment | null;
   loops: LoopSegment[];
   isLooping: boolean;
+  tempStart: number | null;
+  tempEnd: number | null;
   onSetLoopStart: (time: number) => void;
   onSetLoopEnd: (time: number) => void;
   onToggleLoop: () => void;
   onSelectLoop: (loop: LoopSegment | null) => void;
   onSaveLoop: (name: string, startTime: number, endTime: number) => void;
   onDeleteLoop: (loopId: string) => void;
+  onClearTempPoints: () => void;
+  onChangeTempStart?: (time: number) => void;
+  onChangeTempEnd?: (time: number) => void;
 }
 
 export function LoopControls({
@@ -20,15 +26,18 @@ export function LoopControls({
   activeLoop,
   loops,
   isLooping,
+  tempStart,
+  tempEnd,
   onSetLoopStart,
   onSetLoopEnd,
   onToggleLoop,
   onSelectLoop,
   onSaveLoop,
-  onDeleteLoop
+  onDeleteLoop,
+  onClearTempPoints,
+  onChangeTempStart,
+  onChangeTempEnd
 }: LoopControlsProps) {
-  const [tempStart, setTempStart] = useState<number | null>(null);
-  const [tempEnd, setTempEnd] = useState<number | null>(null);
   const [newLoopName, setNewLoopName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
@@ -36,6 +45,20 @@ export function LoopControls({
   const [isLoopSettingExpanded, setIsLoopSettingExpanded] = useState(true);
   const [isSavedLoopsExpanded, setIsSavedLoopsExpanded] = useState(false);
   const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false);
+
+  // Auto-expand loops section when temp points are set or loops are saved
+  useEffect(() => {
+    if (tempStart !== null || tempEnd !== null) {
+      setIsLoopSettingExpanded(true);
+    }
+  }, [tempStart, tempEnd]);
+
+  // Auto-expand saved loops section when loops are added
+  useEffect(() => {
+    if (loops.length > 0) {
+      setIsSavedLoopsExpanded(true);
+    }
+  }, [loops.length]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -46,13 +69,11 @@ export function LoopControls({
 
   const handleSetStart = useCallback(() => {
     const time = Math.floor(currentTime * 100) / 100; // Round to centiseconds
-    setTempStart(time);
     onSetLoopStart(time);
   }, [currentTime, onSetLoopStart]);
 
   const handleSetEnd = useCallback(() => {
     const time = Math.floor(currentTime * 100) / 100;
-    setTempEnd(time);
     onSetLoopEnd(time);
   }, [currentTime, onSetLoopEnd]);
 
@@ -60,10 +81,8 @@ export function LoopControls({
     if (tempStart !== null && tempEnd !== null) {
       if (tempEnd > tempStart) {
         // Auto-generate name if none provided
-        const name = newLoopName.trim() || `Loop ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`;
+        const name = newLoopName.trim() || `Segment ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`;
         onSaveLoop(name, tempStart, tempEnd);
-        setTempStart(null);
-        setTempEnd(null);
         setNewLoopName('');
         setShowSaveDialog(false);
       } else {
@@ -76,10 +95,8 @@ export function LoopControls({
     if (tempStart !== null && tempEnd !== null) {
       if (tempEnd > tempStart) {
         // Auto-save with generated name
-        const name = `Loop ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`;
+        const name = `Segment ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`;
         onSaveLoop(name, tempStart, tempEnd);
-        setTempStart(null);
-        setTempEnd(null);
         setNewLoopName('');
       } else {
         alert('End time must be after start time');
@@ -88,10 +105,9 @@ export function LoopControls({
   }, [tempStart, tempEnd, onSaveLoop]);
 
   const handleClearTemp = useCallback(() => {
-    setTempStart(null);
-    setTempEnd(null);
+    onClearTempPoints();
     setShowSaveDialog(false);
-  }, []);
+  }, [onClearTempPoints]);
 
   const handlePlayLoop = useCallback((loop: LoopSegment) => {
     // Select the loop
@@ -107,7 +123,7 @@ export function LoopControls({
   return (
     <div className="loop-controls">
       <div className="loop-header">
-        <h3>🔁 Loop Controls</h3>
+        <h3>🎯 Segments</h3>
         <button
           onClick={onToggleLoop}
           className={`loop-toggle ${isLooping ? 'active' : ''}`}
@@ -132,41 +148,87 @@ export function LoopControls({
           className="section-header"
           onClick={() => setIsLoopSettingExpanded(!isLoopSettingExpanded)}
         >
-          <span>⚙️ Create Loop</span>
+          <span>⚙️ Loops</span>
           <span className={`expand-icon ${isLoopSettingExpanded ? 'expanded' : ''}`}>▼</span>
         </button>
 
         {isLoopSettingExpanded && (
           <div className="loop-setting">
-            <div className="time-display">
-              Current: <strong>{formatTime(currentTime)}</strong>
-            </div>
-
             <div className="loop-buttons">
               <button onClick={handleSetStart} className="set-start">
-                📍 Set Start ({tempStart !== null ? formatTime(tempStart) : '--:--'})
+                📍 Set Start
               </button>
               <button onClick={handleSetEnd} className="set-end">
-                🏁 Set End ({tempEnd !== null ? formatTime(tempEnd) : '--:--'})
+                🏁 Set End
               </button>
             </div>
 
-            {hasValidTempLoop && (
+            {tempStart !== null && (
               <div className="temp-loop">
+                <div className="temp-loop-badge">TEMPORARY</div>
                 <div className="temp-loop-info">
-                  <span>New Loop: {formatTime(tempStart!)} → {formatTime(tempEnd!)}</span>
-                  <span>Duration: {formatTime(tempEnd! - tempStart!)}</span>
+                  <div className="temp-loop-times">
+                    <div className="temp-time-row">
+                      <span className="time-label">Start:</span>
+                      <EditableTime
+                        timeInSeconds={tempStart}
+                        onTimeChange={onChangeTempStart || (() => {})}
+                        className="time-value"
+                      />
+                    </div>
+                    <div className="temp-time-row">
+                      <span className="time-label">End:</span>
+                      {tempEnd !== null ? (
+                        <EditableTime
+                          timeInSeconds={tempEnd}
+                          onTimeChange={onChangeTempEnd || (() => {})}
+                          className="time-value"
+                        />
+                      ) : (
+                        <span className="time-value">--:--</span>
+                      )}
+                      {tempEnd !== null && (
+                        <span className="temp-duration-inline">
+                          <span className="duration-label">Duration:</span>
+                          <span className="duration-value">{formatTime(tempEnd - tempStart)}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {tempEnd === null && (
+                    <div className="temp-duration incomplete">
+                      Set end point to complete
+                    </div>
+                  )}
                 </div>
                 <div className="temp-loop-actions">
-                  <button onClick={handleQuickSave} className="save-loop-quick">
-                    💾 Save Loop
-                  </button>
-                  <button onClick={() => setShowSaveDialog(true)} className="save-loop-custom">
-                    ✏️ Custom Name
-                  </button>
-                  <button onClick={handleClearTemp} className="clear-temp">
-                    ❌ Clear
-                  </button>
+                  {hasValidTempLoop ? (
+                    <>
+                      <div className="temp-action-row">
+                        <button onClick={() => {
+                          const tempLoop = { id: 'temp', name: 'Temp', startTime: tempStart!, endTime: tempEnd!, isActive: false };
+                          handlePlayLoop(tempLoop);
+                        }} className="temp-play">
+                          ▶️
+                        </button>
+                        <button onClick={handleClearTemp} className="temp-delete">
+                          🗑️
+                        </button>
+                      </div>
+                      <div className="temp-action-row">
+                        <button onClick={handleQuickSave} className="temp-save">
+                          💾 Save
+                        </button>
+                        <button onClick={() => setShowSaveDialog(true)} className="temp-save-custom">
+                          ✏️ Custom
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button onClick={handleClearTemp} className="clear-temp-single">
+                      ✕ Clear Start
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -207,6 +269,7 @@ export function LoopControls({
               <div className="loops-list">
                 {loops.map((loop) => (
                   <div key={loop.id} className={`loop-item ${loop.id === activeLoop?.id ? 'active' : ''}`}>
+                    <div className="saved-loop-badge">SAVED</div>
                     <div className="loop-details">
                       <span className="loop-name">{loop.name}</span>
                       <span className="loop-time">
@@ -215,15 +278,23 @@ export function LoopControls({
                     </div>
                     <div className="loop-actions">
                       <button
-                        onClick={() => handlePlayLoop(loop)}
-                        className="play-loop"
-                        title="Play this loop"
+                        onClick={() => onSelectLoop(loop)}
+                        className="select-loop"
+                        title="Select this segment"
                       >
                         ▶️
                       </button>
                       <button
+                        onClick={() => handlePlayLoop(loop)}
+                        className={`loop-toggle-btn ${activeLoop?.id === loop.id && isLooping ? 'active' : ''}`}
+                        title={activeLoop?.id === loop.id && isLooping ? "Stop looping" : "Start looping"}
+                      >
+                        {activeLoop?.id === loop.id && isLooping ? '⏹️' : '🔁'}
+                      </button>
+                      <button
                         onClick={() => onDeleteLoop(loop.id)}
                         className="delete-loop"
+                        title="Delete this segment"
                       >
                         🗑️
                       </button>

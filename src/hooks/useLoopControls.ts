@@ -150,6 +150,19 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
     setTempEnd(null);
   }, []);
 
+  const clearTempPoints = useCallback(() => {
+    setTempStart(null);
+    setTempEnd(null);
+  }, []);
+
+  const changeTempStart = useCallback((time: number) => {
+    setTempStart(time);
+  }, []);
+
+  const changeTempEnd = useCallback((time: number) => {
+    setTempEnd(time);
+  }, []);
+
   return {
     loops,
     activeLoop,
@@ -162,6 +175,9 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
     deleteLoop,
     selectLoop,
     toggleLooping,
-    clearLoops
+    clearLoops,
+    clearTempPoints,
+    changeTempStart,
+    changeTempEnd
   };
 }

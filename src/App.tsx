@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { YouTubePlayer, YouTubePlayerHandle } from "./components/YouTubePlayer";
 import { LoopProgressBar } from "./components/LoopProgressBar";
 import { SidebarTabs } from "./components/SidebarTabs/SidebarTabs";
 import { InstructionsModal } from "./components/InstructionsModal/InstructionsModal";
 import { SpeedControlModal } from "./components/SpeedControlModal/SpeedControlModal";
 import { LoadVideoModal } from "./components/LoadVideoModal/LoadVideoModal";
+import { MySongsModal } from "./components/MySongsModal/MySongsModal";
 import { Toast } from "./components/Toast/Toast";
 import { useLoopControls } from "./hooks/useLoopControls";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -23,24 +24,47 @@ function App() {
   const instructionsModal = useModal();
   const speedModal = useModal();
   const loadVideoModal = useModal();
+  const mySongsModal = useModal();
 
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [isSavingSong, setIsSavingSong] = useState(false);
+  const [songTags, setSongTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
+  const [savedSongs, setSavedSongs] = useState<any[]>([]);
+  const [volume, setVolume] = useState(100);
 
   const playerRef = useRef<YouTubePlayerHandle>(null);
+
+  // Load saved songs from localStorage on startup
+  useEffect(() => {
+    const stored = localStorage.getItem('segment-studio-songs');
+    if (stored) {
+      try {
+        setSavedSongs(JSON.parse(stored));
+      } catch (error) {
+        console.error('Failed to load saved songs:', error);
+      }
+    }
+  }, []);
 
   // Loop controls
   const {
     loops,
     activeLoop,
     isLooping,
+    tempStart,
+    tempEnd,
     setLoopStart,
     setLoopEnd,
     saveLoop,
     deleteLoop,
     selectLoop,
     toggleLooping,
-    clearLoops
+    clearLoops,
+    clearTempPoints,
+    changeTempStart,
+    changeTempEnd
   } = useLoopControls({ playerRef, isPlaying });
 
 
@@ -76,8 +100,17 @@ function App() {
     }
   }, []);
 
+  const changeVolume = useCallback((newVolume: number) => {
+    if (playerRef.current) {
+      playerRef.current.setVolume(newVolume);
+      setVolume(newVolume);
+    }
+  }, []);
+
   const handlePlayerReady = useCallback(() => {
     console.log('Player is ready for control');
+    // Note: Don't set volume here as it causes restarts
+    // Volume will be synced through the monitoring interval
   }, []);
 
   const handleStateChange = useCallback((state: number) => {
@@ -91,6 +124,10 @@ function App() {
 
   const handleDurationChange = useCallback((duration: number) => {
     setDuration(duration);
+  }, []);
+
+  const handleVolumeChange = useCallback((newVolume: number) => {
+    setVolume(newVolume);
   }, []);
 
   const handleSeekToTime = useCallback((time: number) => {
@@ -168,7 +205,120 @@ function App() {
     setVideoUrl(videoUrl);
     setCurrentSpeed(1.0); // Reset speed when loading new video
     clearLoops(); // Clear any temporary loops
+    setSongTags([]); // Clear tags for new video
+    setVolume(100); // Reset volume for new video
   }, [clearLoops]);
+
+  const addTag = useCallback(() => {
+    const tag = newTag.trim();
+    if (tag && !songTags.includes(tag)) {
+      setSongTags(prev => [...prev, tag]);
+      setNewTag('');
+    }
+  }, [newTag, songTags]);
+
+  const removeTag = useCallback((tagToRemove: string) => {
+    setSongTags(prev => prev.filter(tag => tag !== tagToRemove));
+  }, []);
+
+  const fetchVideoTitle = useCallback(async (videoId: string): Promise<{title: string, author: string}> => {
+    try {
+      const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          title: data.title || `Video ${videoId}`,
+          author: data.author_name || 'Unknown Artist'
+        };
+      }
+    } catch (error) {
+      console.error('Failed to fetch video title:', error);
+    }
+
+    return {
+      title: `Video ${videoId}`,
+      author: 'Unknown Artist'
+    };
+  }, []);
+
+  const handleSaveSong = useCallback(async () => {
+    if (!videoId || !videoUrl) {
+      showToastNotification('No video loaded to save');
+      return;
+    }
+
+    setIsSavingSong(true);
+
+    try {
+      // Get video title and artist from YouTube oEmbed API
+      const { title: videoTitle, author: videoArtist } = await fetchVideoTitle(videoId);
+
+      const newSong = {
+        id: Date.now().toString(),
+        title: videoTitle,
+        artist: videoArtist,
+        url: videoUrl,
+        videoId: videoId,
+        duration: duration || 0,
+        segmentCount: loops.length,
+        segments: loops,
+        lastPracticed: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString().split('T')[0],
+        tags: [...songTags],
+        notes: '',
+        volume: volume
+      };
+
+      const updatedSongs = [...savedSongs, newSong];
+      setSavedSongs(updatedSongs);
+      localStorage.setItem('segment-studio-songs', JSON.stringify(updatedSongs));
+
+      showToastNotification(`"${videoTitle}" saved successfully! 💾`);
+      setIsSavingSong(false);
+    } catch (error) {
+      showToastNotification('Failed to save song');
+      setIsSavingSong(false);
+    }
+  }, [videoId, videoUrl, duration, loops, songTags, savedSongs, showToastNotification, fetchVideoTitle]);
+
+  const handleSongSelect = useCallback((songId: string, songUrl: string) => {
+    const id = extractVideoId(songUrl);
+    if (id) {
+      // Find the saved song to load its tags and other data
+      const savedSong = savedSongs.find(song => song.videoId === id);
+
+      setVideoId(id);
+      setVideoUrl(songUrl);
+      setCurrentSpeed(1.0);
+      clearLoops();
+
+      // Load saved tags and volume if song exists
+      if (savedSong) {
+        setSongTags(savedSong.tags || []);
+
+        // Restore saved volume
+        const savedVolume = savedSong.volume ?? 100;
+        setVolume(savedVolume);
+        if (playerRef.current) {
+          playerRef.current.setVolume(savedVolume);
+        }
+
+        // Update last practiced date
+        const updatedSongs = savedSongs.map(song =>
+          song.id === savedSong.id
+            ? { ...song, lastPracticed: new Date().toISOString().split('T')[0] }
+            : song
+        );
+        setSavedSongs(updatedSongs);
+        localStorage.setItem('segment-studio-songs', JSON.stringify(updatedSongs));
+      } else {
+        setSongTags([]);
+        setVolume(100); // Reset to default volume for new videos
+      }
+
+      showToastNotification('Song loaded successfully! 🎵');
+    }
+  }, [clearLoops, showToastNotification, savedSongs]);
 
   const handleUrlBlur = useCallback(() => {
     if (videoUrl && validateYouTubeUrl(videoUrl)) {
@@ -185,7 +335,7 @@ function App() {
       <div className="app-layout">
         <main className="main-content">
           <div className="app-header">
-            <h1>Organize Tube</h1>
+            <h1>Segment Studio</h1>
             <button
               onClick={loadVideoModal.open}
               className="load-video-button"
@@ -195,67 +345,191 @@ function App() {
             </button>
           </div>
 
-          {videoId && (
-            <div className="video-section">
-              <div className="video-and-controls">
-                <div className="controls-sidebar">
-                  <div className="playback-row">
-                    <span>Current Time:<br/>{formatTime(currentTime)}</span>
-                    <button
-                      onClick={togglePlayPause}
-                      className="play-pause-btn"
-                    >
-                      {isPlaying ? '⏸️ Pause' : '▶️ Play'}
-                    </button>
+          <div className="video-section">
+            <div className="video-and-controls">
+              <div className="controls-sidebar">
+                <div className="playback-row">
+                  <span>Current Time:<br/>{videoId ? formatTime(currentTime) : '--:--'}</span>
+                  <button
+                    onClick={togglePlayPause}
+                    className="play-pause-btn"
+                    disabled={!videoId}
+                    style={{ opacity: !videoId ? 0.5 : 1 }}
+                  >
+                    {!videoId ? '▶️ Play' : isPlaying ? '⏸️ Pause' : '▶️ Play'}
+                  </button>
+                </div>
+
+                <div className="volume-control">
+                  <div className="volume-header">
+                    <label>🔊 Volume:</label>
+                    <span className="volume-value">{volume}%</span>
                   </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={volume}
+                    onChange={(e) => changeVolume(Number(e.target.value))}
+                    className="volume-slider"
+                    disabled={!videoId}
+                    style={{ opacity: !videoId ? 0.5 : 1 }}
+                  />
+                </div>
 
-                  {isLooping && activeLoop && (
-                    <div className="status-info">
-                      <span className="loop-status">🔁 Looping: {activeLoop.name}</span>
-                    </div>
-                  )}
+                <div className="status-info">
+                  <span className={isLooping && activeLoop ? "loop-status" : "full-song-status"}>
+                    {!videoId ? "🎵 No video loaded" : isLooping && activeLoop ? `🔁 Looping: ${activeLoop.name}` : "🎵 Playing full song"}
+                  </span>
+                </div>
 
-                  <div className="speed-controls">
-                    <div className="speed-header">
-                      <label>Practice Speed:</label>
-                      <span className="current-speed">Current: {currentSpeed}x</span>
-                    </div>
-                    <div className="speed-buttons">
-                      {essentialSpeeds.map((speed) => (
-                      <button
-                        key={speed}
-                        onClick={() => changeSpeed(speed)}
-                        className={currentSpeed === speed ? 'active' : ''}
-                        type="button"
-                      >
-                        {speed}x
-                      </button>
-                    ))}
-                      <button
-                        onClick={speedModal.open}
-                        className="more-speeds-btn"
-                        type="button"
-                        title="More speed options"
-                      >
-                        More...
-                      </button>
-                    </div>
+                <div className="speed-controls">
+                  <div className="speed-header">
+                    <label>Practice Speed:</label>
+                    <span className="current-speed">Current: {currentSpeed}x</span>
                   </div>
-
-                  <div className="help-section">
+                  <div className="speed-buttons">
+                    {essentialSpeeds.map((speed) => (
                     <button
-                      className="help-button"
-                      onClick={instructionsModal.open}
+                      key={speed}
+                      onClick={() => changeSpeed(speed)}
+                      className={currentSpeed === speed ? 'active' : ''}
                       type="button"
-                      title="Show help and keyboard shortcuts"
-                      style={{ background: 'red', color: 'white', padding: '6px 8px', fontSize: '11px' }}
+                      disabled={!videoId}
+                      style={{ opacity: !videoId ? 0.5 : 1 }}
                     >
-                      📚 Help & Shortcuts
+                      {speed}x
+                    </button>
+                  ))}
+                    <button
+                      onClick={speedModal.open}
+                      className="more-speeds-btn"
+                      type="button"
+                      title="More speed options"
+                      disabled={!videoId}
+                      style={{ opacity: !videoId ? 0.5 : 1 }}
+                    >
+                      More...
                     </button>
                   </div>
                 </div>
 
-                <div className="video-container">
+                <div className="save-song-section">
+                  <button
+                    className="save-song-button"
+                    onClick={handleSaveSong}
+                    disabled={!videoId || isSavingSong}
+                    type="button"
+                    title="Save current video as a song routine"
+                    style={{
+                      background: !videoId ? '#6c757d' : isSavingSong ? '#fd7e14' : '#28a745',
+                      color: 'white',
+                      padding: '8px 12px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      borderRadius: '6px',
+                      border: 'none',
+                      width: '100%',
+                      cursor: !videoId || isSavingSong ? 'not-allowed' : 'pointer',
+                      opacity: !videoId || isSavingSong ? 0.7 : 1
+                    }}
+                  >
+                    {isSavingSong ? '⏳ Saving...' : '💾 Save Song'}
+                  </button>
+
+                  <button
+                    className="my-songs-link"
+                    onClick={mySongsModal.open}
+                    type="button"
+                    title="View saved songs"
+                    style={{
+                      background: 'transparent',
+                      color: '#007bff',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      fontWeight: '500',
+                      border: '1px solid #007bff',
+                      borderRadius: '4px',
+                      width: '100%',
+                      marginTop: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📂 My Songs
+                  </button>
+                </div>
+
+                <div className="tags-section">
+                  <div className="tags-header">
+                    <label>🏷️ Tags:</label>
+                  </div>
+                  <div className="tags-container">
+                    {songTags.map((tag) => (
+                      <span key={tag} className="tag-item">
+                        {tag}
+                        <button
+                          onClick={() => removeTag(tag)}
+                          className="tag-remove"
+                          title="Remove tag"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="add-tag">
+                    <input
+                      type="text"
+                      placeholder="Add tag..."
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addTag()}
+                      className="tag-input"
+                      autoCapitalize="none"
+                      style={{
+                        fontSize: '10px',
+                        padding: '4px 6px',
+                        border: '1px solid #ddd',
+                        borderRadius: '3px',
+                        width: '100px',
+                        textTransform: 'none'
+                      }}
+                    />
+                    <button
+                      onClick={addTag}
+                      disabled={!newTag.trim()}
+                      className="add-tag-btn"
+                      style={{
+                        fontSize: '10px',
+                        padding: '4px 8px',
+                        marginLeft: '4px',
+                        backgroundColor: newTag.trim() ? '#28a745' : '#6c757d',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '3px',
+                        cursor: newTag.trim() ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="help-section">
+                  <button
+                    className="help-button"
+                    onClick={instructionsModal.open}
+                    type="button"
+                    title="Show help and keyboard shortcuts"
+                    style={{ background: 'red', color: 'white', padding: '6px 8px', fontSize: '11px' }}
+                  >
+                    📚 Help & Shortcuts
+                  </button>
+                </div>
+              </div>
+
+              <div className="video-container">
+                {videoId ? (
                   <YouTubePlayer
                     ref={playerRef}
                     videoId={videoId}
@@ -263,11 +537,36 @@ function App() {
                     onStateChange={handleStateChange}
                     onTimeUpdate={handleTimeUpdate}
                     onDurationChange={handleDurationChange}
+                    onVolumeChange={handleVolumeChange}
                   />
-                </div>
+                ) : (
+                  <div className="video-placeholder">
+                    <div className="placeholder-content">
+                      <h2>🎯 Welcome to Segment Studio!</h2>
+                      <p>Click "📹 Load Video" above to start practicing music at your own pace.</p>
+                      <p>Perfect for musicians who need to slow down songs to learn difficult passages.</p>
+                      <div className="placeholder-features">
+                        <div className="feature">
+                          <span>🎯</span>
+                          <span>Set precise segments for looping</span>
+                        </div>
+                        <div className="feature">
+                          <span>🐌</span>
+                          <span>Slow down playback speed</span>
+                        </div>
+                        <div className="feature">
+                          <span>⌨️</span>
+                          <span>Use keyboard shortcuts (S/E/R)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
 
-              {/* Progress Bar with Loop Visualization */}
+            {/* Progress Bar with Loop Visualization */}
+            {videoId ? (
               <LoopProgressBar
                 currentTime={currentTime}
                 duration={duration}
@@ -276,16 +575,12 @@ function App() {
                 onSetLoopStart={setLoopStart}
                 onSetLoopEnd={setLoopEnd}
               />
-            </div>
-          )}
-
-          {!videoId && (
-            <div className="placeholder">
-              <h2>🎵 Welcome to Organize Tube!</h2>
-              <p>Enter a YouTube URL above to start practicing music at your own pace.</p>
-              <p>Perfect for musicians who need to slow down songs to learn difficult passages.</p>
-            </div>
-          )}
+            ) : (
+              <div className="progress-placeholder">
+                <span>🎼 Progress bar will appear when video is loaded</span>
+              </div>
+            )}
+          </div>
         </main>
 
         <aside className="sidebar">
@@ -294,12 +589,17 @@ function App() {
             activeLoop={activeLoop}
             loops={loops}
             isLooping={isLooping}
+            tempStart={tempStart}
+            tempEnd={tempEnd}
             onSetLoopStart={setLoopStart}
             onSetLoopEnd={setLoopEnd}
             onToggleLoop={toggleLooping}
             onSelectLoop={selectLoop}
             onSaveLoop={saveLoop}
             onDeleteLoop={deleteLoop}
+            onClearTempPoints={clearTempPoints}
+            onChangeTempStart={changeTempStart}
+            onChangeTempEnd={changeTempEnd}
             onVideoSelect={handleVideoSelect}
           />
         </aside>
@@ -323,6 +623,14 @@ function App() {
         onClose={loadVideoModal.close}
         onVideoLoad={handleVideoLoad}
         currentVideoUrl={videoUrl}
+      />
+
+      <MySongsModal
+        isOpen={mySongsModal.isOpen}
+        onClose={mySongsModal.close}
+        onSongSelect={handleSongSelect}
+        savedSongs={savedSongs}
+        onSongsUpdate={setSavedSongs}
       />
 
       <Toast

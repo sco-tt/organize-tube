@@ -1,0 +1,84 @@
+.editable-time {
+  font-family: monospace;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+}
+
+.time-component {
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+  min-width: 1ch;
+  text-align: center;
+}
+
+.time-component:hover {
+  background-color: rgba(0, 123, 255, 0.1);
+  outline: 1px solid rgba(0, 123, 255, 0.3);
+}
+
+.time-component.hours {
+  min-width: 2ch;
+}
+
+.time-component.minutes {
+  min-width: 2ch;
+}
+
+.time-component.seconds {
+  min-width: 2ch;
+}
+
+.time-component.hundredths {
+  min-width: 2ch;
+}
+
+.time-separator {
+  pointer-events: none;
+  user-select: none;
+}
+
+.time-input {
+  border: 1px solid #007bff;
+  border-radius: 2px;
+  background-color: #fff;
+  font-family: monospace;
+  font-weight: bold;
+  text-align: center;
+  outline: none;
+  font-size: inherit;
+  color: inherit;
+  padding: 1px 2px;
+}
+
+.hours-input {
+  width: 3ch;
+}
+
+.minutes-input {
+  width: 2ch;
+}
+
+.seconds-input {
+  width: 2ch;
+}
+
+.hundredths-input {
+  width: 2ch;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .time-component:hover {
+    background-color: rgba(0, 123, 255, 0.2);
+    outline: 1px solid rgba(0, 123, 255, 0.5);
+  }
+
+  .time-input {
+    background-color: #2d2d2d;
+    border-color: #007bff;
+    color: #fff;
+  }
+}

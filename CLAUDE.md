@@ -1,4 +1,4 @@
-# Organize Tube - Desktop App
+# Segment Studio - Desktop App
 
 ## Project Overview
 A Tauri-based desktop music practice tool similar to looper.tube that embeds YouTube videos and provides precise loop controls for musicians. The app enables distraction-free practice with speed adjustment, frame-level loop accuracy, and automated practice routines.

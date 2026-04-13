@@ -1,8 +1,8 @@
 .loop-controls {
   background-color: #f8f9fa;
-  border-radius: 12px;
-  padding: 20px;
-  margin-top: 20px;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
   border: 1px solid #dee2e6;
 }
 
@@ -59,34 +59,35 @@
 
 .loop-setting {
   background-color: white;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
   border: 1px solid #dee2e6;
 }
 
 .time-display {
   text-align: center;
-  margin-bottom: 15px;
-  font-size: 1.1rem;
+  margin-bottom: 12px;
+  font-size: 1rem;
   color: #495057;
 }
 
 .loop-buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-bottom: 15px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .set-start,
 .set-end {
-  padding: 12px 16px;
+  padding: 6px 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
+  font-size: 0.8rem;
 }
 
 .set-start {
@@ -109,64 +110,182 @@
 
 .temp-loop {
   background-color: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 8px;
-  padding: 15px;
-  margin-top: 15px;
+  border: 2px dashed #f0b90b;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 10px;
+  position: relative;
 }
 
 .temp-loop-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
   color: #856404;
   font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.temp-loop-times {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.temp-time-row {
+  display: flex;
+  align-items: center;
+}
+
+.time-label {
+  width: 40px;
+  font-size: 0.8rem;
+  color: #6c5700;
+}
+
+.time-value {
+  font-family: monospace;
+  font-weight: bold;
+}
+
+.temp-duration {
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2px 0;
+}
+
+.temp-duration.incomplete {
+  font-style: italic;
+  color: #8b6914;
+}
+
+.temp-duration-inline {
+  margin-left: 12px;
+  font-size: 0.75rem;
+  color: #8b6914;
+  font-weight: normal;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-top: -8px;
+}
+
+.duration-label {
+  line-height: 1;
+}
+
+.duration-value {
+  font-family: monospace;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.temp-loop-badge {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  background-color: #f0b90b;
+  color: #856404;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.saved-loop-badge {
+  position: absolute;
+  top: -6px;
+  right: 8px;
+  background-color: #28a745;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .temp-loop-actions {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 48px;
+}
+
+.temp-action-row {
+  display: flex;
+  gap: 4px;
   justify-content: center;
 }
 
-.save-loop-quick {
-  background-color: #28a745;
-  color: white;
-  padding: 8px 16px;
+.temp-play,
+.temp-delete,
+.temp-save,
+.temp-save-custom {
+  padding: 4px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: 3px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 0.75rem;
+  min-width: 60px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.save-loop-quick:hover {
+.temp-play {
+  background-color: #28a745;
+  color: white;
+}
+
+.temp-play:hover {
   background-color: #218838;
 }
 
-.save-loop-custom {
-  background-color: #007bff;
+.temp-delete {
+  background-color: #dc3545;
   color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
 }
 
-.save-loop-custom:hover {
+.temp-delete:hover {
+  background-color: #c82333;
+}
+
+.temp-save {
+  background-color: #28a745;
+  color: white;
+}
+
+.temp-save:hover {
+  background-color: #218838;
+}
+
+.temp-save-custom {
+  background-color: #007bff;
+  color: white;
+}
+
+.temp-save-custom:hover {
   background-color: #0056b3;
 }
 
-.clear-temp {
+
+.clear-temp-single {
   background-color: #6c757d;
   color: white;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
-.clear-temp:hover {
+.clear-temp-single:hover {
   background-color: #5a6268;
 }
 
@@ -213,9 +332,9 @@
 
 .saved-loops {
   background-color: white;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
   border: 1px solid #dee2e6;
 }
 
@@ -235,10 +354,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 15px;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid #28a745;
+  border-left: 4px solid #28a745;
+  border-radius: 4px;
   transition: all 0.3s;
+  background-color: #f8fff9;
+  position: relative;
 }
 
 .loop-item:hover {
@@ -269,20 +391,36 @@
 
 .loop-actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
-.play-loop,
+.loop-toggle-btn.active {
+  background-color: #dc3545 !important;
+  color: white !important;
+  font-weight: bold;
+}
+
+.select-loop,
+.loop-toggle-btn,
 .delete-loop {
-  padding: 6px 10px;
+  padding: 4px 6px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   background-color: transparent;
-  font-size: 16px;
+  font-size: 14px;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.play-loop:hover {
+.select-loop:hover {
+  background-color: #e9ecef;
+}
+
+.loop-toggle-btn:hover {
   background-color: #e9ecef;
 }
 

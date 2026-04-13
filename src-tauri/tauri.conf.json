@@ -1,7 +1,7 @@
 {
-  "productName": "Organize Tube",
+  "productName": "Segment Studio",
   "version": "0.1.0",
-  "identifier": "com.organizetube.musicpractice",
+  "identifier": "com.segmentstudio.musicpractice",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420"
@@ -9,7 +9,7 @@
   "app": {
     "windows": [
       {
-        "title": "Organize Tube",
+        "title": "Segment Studio",
         "width": 1200,
         "height": 800,
         "resizable": true,

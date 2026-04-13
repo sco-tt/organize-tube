@@ -15,6 +15,8 @@ export interface YouTubePlayerHandle {
   seekTo: (seconds: number) => void;
   getPlayerState: () => number;
   getDuration: () => number;
+  setVolume: (volume: number) => void;
+  getVolume: () => number;
 }
 
 interface YouTubePlayerProps {
@@ -23,13 +25,18 @@ interface YouTubePlayerProps {
   onStateChange?: (state: number) => void;
   onTimeUpdate?: (time: number) => void;
   onDurationChange?: (duration: number) => void;
+  onVolumeChange?: (volume: number) => void;
 }
 
 export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(
-  ({ videoId, onReady, onStateChange, onTimeUpdate, onDurationChange }, ref) => {
+  ({ videoId, onReady, onStateChange, onTimeUpdate, onDurationChange, onVolumeChange }, ref) => {
     const playerElementRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<any>(null);
     const [isAPIReady, setIsAPIReady] = useState(false);
+    const onVolumeChangeRef = useRef(onVolumeChange);
+
+    // Update ref when callback changes
+    onVolumeChangeRef.current = onVolumeChange;
 
     // Load YouTube IFrame Player API
     useEffect(() => {
@@ -112,22 +119,37 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           },
         });
 
-        // Set up time update interval
-        const timeUpdateInterval = setInterval(() => {
-          if (playerRef.current && playerRef.current.getCurrentTime) {
-            try {
-              const currentTime = playerRef.current.getCurrentTime();
-              if (onTimeUpdate && typeof currentTime === 'number') {
-                onTimeUpdate(currentTime);
+        // Set up time and volume update interval
+        const updateInterval = setInterval(() => {
+          if (playerRef.current) {
+            // Update time
+            if (playerRef.current.getCurrentTime) {
+              try {
+                const currentTime = playerRef.current.getCurrentTime();
+                if (onTimeUpdate && typeof currentTime === 'number') {
+                  onTimeUpdate(currentTime);
+                }
+              } catch (e) {
+                console.log('Error getting current time:', e);
               }
-            } catch (e) {
-              console.log('Error getting current time:', e);
+            }
+
+            // Update volume
+            if (playerRef.current.getVolume && onVolumeChangeRef.current) {
+              try {
+                const currentVolume = playerRef.current.getVolume();
+                if (typeof currentVolume === 'number') {
+                  onVolumeChangeRef.current(Math.round(currentVolume));
+                }
+              } catch (e) {
+                console.log('Error getting volume:', e);
+              }
             }
           }
         }, 1000);
 
         return () => {
-          clearInterval(timeUpdateInterval);
+          clearInterval(updateInterval);
         };
       }
     }, [isAPIReady, videoId, onReady, onStateChange, onTimeUpdate, onDurationChange]);
@@ -171,6 +193,17 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           return playerRef.current.getDuration();
         }
         return 0;
+      },
+      setVolume: (volume: number) => {
+        if (playerRef.current && playerRef.current.setVolume) {
+          playerRef.current.setVolume(volume);
+        }
+      },
+      getVolume: () => {
+        if (playerRef.current && playerRef.current.getVolume) {
+          return playerRef.current.getVolume();
+        }
+        return 100;
       },
     }));
 

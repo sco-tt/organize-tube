@@ -1,10 +1,10 @@
-# Organize Tube - Desktop App Requirements
+# Segment Studio - Desktop App Requirements
 
 ## Project Overview
 Building a desktop music practice tool similar to looper.tube that embeds YouTube videos and provides precise loop controls for musicians. The app allows users to:
 - Embed YouTube videos in a distraction-free environment
 - Adjust playback speed (especially slow down for practice)
-- Set precise loop segments (e.g., 1:15 to 1:35) with frame-level accuracy
+- Set precise segments (e.g., 1:15 to 1:35) with frame-level accuracy for looping
 - Practice difficult passages by looping at custom speeds continuously
 - Access the tool offline without browser distractions and ads
 
@@ -65,12 +65,12 @@ Building a desktop music practice tool similar to looper.tube that embeds YouTub
 ### Core Video Looper Features
 - [ ] **YouTube Video Embedding**: Reliable iframe embedding across all target platforms
 - [ ] **Speed Controls**: Smooth playback speed adjustment (0.25x to 2.0x, focus on slower speeds)
-- [ ] **Precise Loop Segments**: Set start/end times with frame-level precision
+- [ ] **Precise Segments**: Set start/end times with frame-level precision
 - [ ] **Continuous Looping**: Seamless loop playback without gaps or stutters
 - [ ] **Time Display**: Current time, loop start/end indicators, duration display
-- [ ] **Keyboard Shortcuts**: Space (play/pause), arrow keys (seek), custom hotkeys for loop points
+- [ ] **Keyboard Shortcuts**: Space (play/pause), arrow keys (seek), custom hotkeys for segment points
 - [ ] **URL Input**: Paste YouTube URLs and extract video ID
-- [ ] **Loop Presets**: Save and load common practice segments per video
+- [ ] **Segment Presets**: Save and load common practice segments per video
 
 ### Practice Structure Features
 - [ ] **Song Routines**: Define practice sequences for individual songs (e.g., play at 0.8x, 0.9x, 1.0x speed)
@@ -86,10 +86,10 @@ Building a desktop music practice tool similar to looper.tube that embeds YouTub
 
 ### Music Practice Workflow
 - [ ] **Global Hotkeys**: Control playback even when app not focused (for instrument practice)
-- [ ] **Quick Loop Setting**: Click-and-drag or hotkey-based loop point setting
-- [ ] **Speed Memory**: Remember speed settings per video/loop segment
+- [ ] **Quick Segment Setting**: Click-and-drag or hotkey-based segment point setting
+- [ ] **Speed Memory**: Remember speed settings per video/segment
 - [ ] **Practice Session Tracking**: Optional tracking of practice time per segment
-- [ ] **Multiple Loops**: Ability to save multiple loop segments per video
+- [ ] **Multiple Segments**: Ability to save multiple segments per video for looping
 - [ ] **Audio Focus**: Minimize audio conflicts with DAW software
 
 ### Data Storage & Management
@@ -191,7 +191,7 @@ export interface SongRoutine {
   duration: number;
   name: string;
   tags: string[];
-  loops: LoopSegment[];
+  segments: Segment[];
   steps: PracticeStep[];
   notes: string;
   freeformNotes: string;
@@ -200,17 +200,17 @@ export interface SongRoutine {
   lastPracticed?: string;
 }
 
-export interface LoopSegment {
-  name: string;
-  startTime: number;
-  endTime: number;
-  defaultSpeed: number;
+export interface Segment {
+  name: string;           // User-defined name for the segment
+  startTime: number;      // Start time in seconds  
+  endTime: number;        // End time in seconds
+  defaultSpeed: number;   // Preferred practice speed for this segment
 }
 
 export interface PracticeStep {
-  speed: number;
-  repetitions?: number;
-  loopSegment?: string; // null = full song
+  speed: number;         // Playback speed (0.5 = 50%, 1.0 = normal, etc.)
+  repetitions?: number;  // Number of times to repeat (optional)
+  segment?: string;      // Segment name to practice, null = full song
 }
 
 export interface ResourceLink {
@@ -241,7 +241,7 @@ export interface VideoPlayerState {
   currentTime: number;
   duration: number;
   speed: number;
-  activeLoop?: LoopSegment;
+  activeLoop?: Segment;
   isLooping: boolean;
 }
 ```
@@ -268,12 +268,12 @@ class DatabaseService {
     await this.db!.execute(`
       INSERT INTO song_routines (
         id, url, url_source, title, artist, duration, name,
-        tags_json, loops_json, steps_json, notes, freeform_notes, links_json, created_at
+        tags_json, segments_json, steps_json, notes, freeform_notes, links_json, created_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `, [
       id, routine.url, routine.urlSource, routine.title, routine.artist,
       routine.duration, routine.name, JSON.stringify(routine.tags),
-      JSON.stringify(routine.loops), JSON.stringify(routine.steps),
+      JSON.stringify(routine.segments), JSON.stringify(routine.steps),
       routine.notes, routine.freeformNotes, JSON.stringify(routine.links), createdAt
     ]);
 
@@ -298,7 +298,7 @@ class DatabaseService {
     return {
       ...row,
       tags: JSON.parse(row.tags_json || '[]'),
-      loops: JSON.parse(row.loops_json || '[]'),
+      segments: JSON.parse(row.segments_json || '[]'),
       steps: JSON.parse(row.steps_json || '[]'),
       links: JSON.parse(row.links_json || '[]'),
     };
@@ -313,7 +313,7 @@ export const databaseService = new DatabaseService();
 ```typescript
 // hooks/useVideoPlayer.ts
 import { useState, useRef, useCallback } from 'react';
-import { VideoPlayerState, LoopSegment } from '../types';
+import { VideoPlayerState, Segment } from '../types';
 
 export function useVideoPlayer() {
   const [state, setState] = useState<VideoPlayerState>({
@@ -333,7 +333,7 @@ export function useVideoPlayer() {
     }
   }, []);
 
-  const setLoop = useCallback((loop: LoopSegment | undefined) => {
+  const setLoop = useCallback((loop: Segment | undefined) => {
     setState(prev => ({
       ...prev,
       activeLoop: loop,
@@ -534,7 +534,7 @@ export function VideoPlayer({ routine, onTimeUpdate }: VideoPlayerProps) {
           onSpeedChange={setSpeed}
         />
         <LoopControl
-          loops={routine.loops}
+          segments={routine.segments}
           activeLoop={state.activeLoop}
           onLoopSelect={setLoop}
         />
@@ -614,7 +614,7 @@ export function App() {
   "duration": 240, // seconds, auto-detected
   "name": "Standard Practice Routine", // user-defined routine name
   "tags": ["guitar", "intermediate"],
-  "loops": [
+  "segments": [
     {
       "name": "Verse 1",
       "startTime": 75.5, // seconds
@@ -632,17 +632,17 @@ export function App() {
     {
       "speed": 0.8,
       "repetitions": 3, // optional
-      "loopSegment": "Verse 1" // optional, uses whole song if null
+      "segment": "Verse 1" // optional, uses whole song if null
     },
     {
       "speed": 0.9,
       "repetitions": 2,
-      "loopSegment": "Chorus"
+      "segment": "Chorus"
     },
     {
       "speed": 1.0,
       "repetitions": 1
-      // no loopSegment = full song
+      // no segment = full song
     }
   ],
   "notes": "Focus on fingering accuracy at slow speed. Watch for clean chord transitions in measures 3-4.",
@@ -712,7 +712,7 @@ CREATE TABLE song_routines (
   duration INTEGER, -- seconds
   name TEXT,
   tags_json TEXT, -- JSON array: ["guitar", "intermediate"]
-  loops_json TEXT, -- JSON array of loop objects
+  segments_json TEXT, -- JSON array of segment objects
   steps_json TEXT, -- JSON array of practice steps
   notes TEXT, -- short practice notes
   freeform_notes TEXT, -- detailed practice journal
@@ -754,11 +754,11 @@ The `url_source` field enables future expansion beyond YouTube:
 -- tags_json example
 '["guitar", "intermediate", "blues", "fingerpicking"]'
 
--- loops_json example
+-- segments_json example
 '[{"name":"Verse 1","startTime":75.5,"endTime":95.2,"defaultSpeed":0.8}]'
 
 -- steps_json example
-'[{"speed":0.8,"repetitions":3,"loopSegment":"Verse 1"}]'
+'[{"speed":0.8,"repetitions":3,"segment":"Verse 1"}]'
 
 -- items_json (setlist) example
 '[{"routineId":"routine-123","playMode":"routine","order":1}]'
@@ -813,7 +813,7 @@ const searchResults = await db.select(`
 
 ### Video Playback Specific Blockers
 - [ ] **YouTube iframe Compatibility**: Does YouTube Player API work consistently across WebView2/WebKit/WebKitGTK?
-- [ ] **Video Timing Precision**: Can we achieve frame-level accuracy for loop points across all WebViews?
+- [ ] **Video Timing Precision**: Can we achieve frame-level accuracy for segment points across all WebViews?
 - [ ] **Performance with Video**: Does video playback performance match Chromium-based solutions?
 - [ ] **YouTube API Limitations**: Any restrictions on iframe embedding in native WebViews?
 - [ ] **Speed Control Accuracy**: Smooth speed changes without audio artifacts across platforms?
@@ -868,14 +868,14 @@ const searchResults = await db.select(`
 
 **Success Criteria**: Can embed and control YouTube videos reliably on all target platforms
 
-### Phase 2: Loop Controls (2-3 weeks)
+### Phase 2: Segment Controls (2-3 weeks)
 1. Implement precise time selection UI (start/end point setting)
 2. Build continuous loop functionality with seamless transitions
 3. Add speed control with smooth audio/video adjustment
 4. Create keyboard shortcuts for common actions
 5. Test timing precision and loop performance
 
-**Success Criteria**: Can set precise loop segments and play continuously at custom speeds
+**Success Criteria**: Can set precise segments and play continuously at custom speeds
 
 ### Phase 3: Data Storage & Structure (1-2 weeks)
 1. Design and implement local database schema (songs, routines, setlists)
@@ -921,7 +921,7 @@ Switch to Electron if:
 - [ ] Smooth 60fps UI during video playback
 
 ### Music Practice Metrics
-- [ ] Frame-level accuracy for loop points (±33ms at 30fps)
+- [ ] Frame-level accuracy for segment points (±33ms at 30fps)
 - [ ] Speed adjustment range 0.25x - 2.0x with smooth audio
 - [ ] Global hotkeys respond within 50ms
 - [ ] Can practice continuously for 30+ minutes without issues
@@ -934,10 +934,10 @@ Switch to Electron if:
 - [ ] Visual consistency in video rendering
 
 ### User Experience Metrics
-- [ ] Can set loop points in under 5 seconds
+- [ ] Can set segment points in under 5 seconds
 - [ ] Intuitive for musicians without technical background
 - [ ] No audio dropouts or glitches during speed changes
-- [ ] Reliable loop presets save/load functionality
+- [ ] Reliable segment presets save/load functionality
 
 ## Resources & Documentation
 
@@ -957,3 +957,120 @@ Switch to Electron if:
 **Decision Date**: TBD
 **Review Date**: After Phase 1 completion
 **Final Technology Choice**: TBD based on blocker evaluation
+
+---
+
+## Product Naming Research
+
+Analysis of potential product names and competing products in the market.
+
+| Product Name | Theme | Description | Similar Existing Products |
+|--------------|--------|-------------|---------------------------|
+| **Practice Pro** | Practice-focused | Professional practice tool | • [Practice Pro - AI Music Tools](https://play.google.com/store/apps/details?id=com.chaosaudio.practicepro) (AI-powered music practice with stems isolation)<br/>• [Practice Pro - Metronome Tuner](https://apps.apple.com/us/app/practice-pro-metronome-tuner/id1615430454) (20 customizable music widgets)<br/>• [Modacity: Pro Music Practice](https://apps.apple.com/us/app/modacity-pro-music-practice/id1351617981) (Practice tracking and assignments)<br/>• [iReal Pro](https://www.irealpro.com) (Jazz backing tracks and practice) |
+| **Drill Studio** | Practice-focused | Focused on repetitive practice | • No direct matches found<br/>• Similar: Various "drill" apps for sports/fitness training |
+| **Rehearsal Room** | Practice-focused | Like having a personal practice space | • No direct matches found<br/>• Similar: Physical rehearsal room booking services |
+| **Practice Lab** | Practice-focused | Experimental, precise practice environment | • No direct matches found<br/>• Similar: Various "lab" themed educational apps |
+| **Slow Study** | Speed/Control-focused | Simple, clear about slowing things down | • [Anytune](https://www.anytune.app/) (Leading app for slowing down music for practice)<br/>• [Essential Music Practice](https://www.essential-music-practice.com/slow-down-music.html) (Slow down music guides)<br/>• Various study music apps (but for concentration, not music learning) |
+| **Tempo Trainer** | Speed/Control-focused | Emphasizes speed control for musicians | • [TempoPro - Metronome & Trainer](https://apps.apple.com/us/app/tempopro-metronome-trainer/id6753893383) (Metronome with tempo training)<br/>• [Time Trainer Metronome](https://apps.apple.com/us/app/time-trainer-metronome/id502491350) (Advanced metronome training tools)<br/>• [PULSE: Tempo Trainer](https://apps.apple.com/us/app/pulse-tempo-trainer/id1496463915) (Beat keeping feedback app)<br/>• [Rhythm Pro: tempo trainer](https://apps.apple.com/us/app/rhythm-pro-tempo-trainer/id1604438442) (Rhythmic pattern training) |
+| **Pace Pro** | Speed/Control-focused | Professional pacing tool | • No exact matches found<br/>• Similar: Running/fitness pace apps |
+| **Speed Master** | Speed/Control-focused | Mastering content at any speed | • No exact matches found<br/>• Similar: Various speed reading apps |
+| **Loop Lab** | Loop/Precision-focused | Laboratory for perfect loops | • [LoopLabs](https://www.looplabs.com/) (Cloud-based collaborative music studio)<br/>• [Loops Lab](https://apps.apple.com/us/app/loops-lab/id6470818791) (Mobile beat making app)<br/>• [Loop Lab Plugin](https://www.stagecraftsoftware.com/products/looplab/) (Professional audio looper plugin)<br/>• [Loopy Pro](https://loopypro.com/) (Premier professional looper and DAW) |
+| **Segment Studio** | Loop/Precision-focused | Professional segment practice | • No direct matches found<br/>• Similar: Various audio editing "studio" apps |
+| **Repeat Master** | Loop/Precision-focused | Mastering through repetition | • No direct matches found<br/>• Similar: Language learning repetition apps |
+| **Precision Practice** | Loop/Precision-focused | Frame-perfect practice tool | • No direct matches found<br/>• Similar: Various precision-focused training apps |
+| **Video Learner** | Learning-focused | Clear learning focus | • No exact match found<br/>• Similar: [uQualio](https://uqualio.com/) (AI-powered video learning platform)<br/>• [LearnWorlds](https://www.learnworlds.com/training-video-software/) (Interactive video training)<br/>• [Panopto](https://www.panopto.com/) (Video learning management) |
+| **Skill Drill** | Learning-focused | Building skills through drilling | • No direct matches found<br/>• Similar: Various skill-building apps across different domains |
+| **Master Class** | Learning-focused | Premium learning experience | • **MasterClass** (Major existing brand - premium online courses)<br/>• Would likely face trademark issues |
+| **Study Studio** | Learning-focused | Dedicated study environment | • No exact matches found<br/>• Similar: Various study apps and productivity tools |
+| **Music Driller** | Music-specific | Specifically for musicians | • No direct matches found<br/>• Similar: Various music practice apps |
+| **Song Studio** | Music-specific | Focus on learning songs | • No exact matches found<br/>• Similar: Various song learning and music creation apps |
+| **Practice Room** | Music-specific | Virtual practice space | • No exact matches found<br/>• Similar: Physical practice room services and music apps |
+| **Instrument Trainer** | Music-specific | Training tool for any instrument | • No exact matches found<br/>• Similar: [Yousician](https://yousician.com/) and other instrument learning apps |
+
+### Key Findings:
+
+**High Competition Names:**
+- Practice Pro (multiple existing apps)
+- Tempo Trainer (several similar apps)
+- Loop Lab (multiple existing products)
+- Master Class (major existing brand)
+
+**Lower Competition Names:**
+- Slow Study (concept exists but name available)
+- Drill Studio (clean availability)
+- Rehearsal Room (clean availability)
+- Segment Studio (clean availability)
+- Video Learner (clean availability)
+
+**Recommended Approach:**
+Focus on names with lower existing competition while ensuring they clearly communicate the product's core value proposition of precise music practice through video segment looping and speed control.
+
+---
+
+## Technical Debt & Migration Plan
+
+### Data Storage Implementation Status
+
+**Current Implementation: localStorage (Temporary)**
+
+The application currently uses browser localStorage for data persistence to enable rapid prototyping and feature development. This provides immediate functionality but has limitations for production use.
+
+**Current localStorage Implementation:**
+```javascript
+// Songs stored as: 'segment-studio-songs'
+localStorage.setItem('segment-studio-songs', JSON.stringify(songs));
+const songs = JSON.parse(localStorage.getItem('segment-studio-songs') || '[]');
+```
+
+**Known Limitations:**
+- No structured queries for search/filter operations
+- No data validation or schema enforcement  
+- Browser storage limits (~5-10MB typical)
+- No atomic transactions or data integrity guarantees
+- Difficult backup/export/import workflows
+- No schema migration path for feature additions
+
+**Planned Migration: SQLite with tauri-plugin-sql**
+
+**Migration Priority: High** (Before production release)
+
+**Target Implementation:**
+```sql
+CREATE TABLE song_routines (
+  id TEXT PRIMARY KEY,
+  url TEXT NOT NULL,
+  url_source TEXT NOT NULL DEFAULT 'youtube',
+  title TEXT,
+  artist TEXT,
+  duration INTEGER,
+  name TEXT,
+  tags_json TEXT,
+  segments_json TEXT,
+  steps_json TEXT,
+  notes TEXT,
+  freeform_notes TEXT,
+  links_json TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_practiced TIMESTAMP
+);
+```
+
+**Migration Benefits:**
+- ✅ Complex search and filtering capabilities
+- ✅ Data integrity and ACID compliance
+- ✅ Unlimited storage capacity
+- ✅ SQL-based queries for advanced features
+- ✅ Atomic transactions for data safety
+- ✅ Schema migrations for feature evolution
+- ✅ Efficient backup/export as single .db file
+- ✅ Cross-platform consistency
+
+**Migration Plan:**
+1. **Phase 1: Implement SQLite infrastructure** while keeping localStorage active
+2. **Phase 2: Add data migration utility** to convert localStorage → SQLite
+3. **Phase 3: Update all CRUD operations** to use SQLite instead of localStorage
+4. **Phase 4: Remove localStorage dependency** and update documentation
+
+**Estimated Migration Effort:** 1-2 weeks
+
+**Migration Trigger:** When song library grows beyond ~100 songs OR when advanced search/filtering features are needed
