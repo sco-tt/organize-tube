@@ -1,22 +1,58 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { LoopSegment } from '../types/loops';
-import { YouTubePlayerHandle } from '../components/YouTubePlayer';
+import { LoopSegmentRepository, LoopSegment, CreateLoopSegment } from '../repositories/loopSegmentRepository';
+import { databaseService } from '../services/databaseService';
 
-interface UseLoopControlsProps {
-  playerRef: React.RefObject<YouTubePlayerHandle>;
-  isPlaying: boolean;
-}
+const loopSegmentRepo = new LoopSegmentRepository();
 
-export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) {
+export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any; isPlaying: boolean }) {
   const [loops, setLoops] = useState<LoopSegment[]>([]);
   const [activeLoop, setActiveLoop] = useState<LoopSegment | null>(null);
   const [isLooping, setIsLooping] = useState(false);
   const [tempStart, setTempStart] = useState<number | null>(null);
   const [tempEnd, setTempEnd] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loopCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSeekTimeRef = useRef<number>(0);
   const seekCooldownRef = useRef<boolean>(false);
+
+  // Initialize database and load standalone segments
+  useEffect(() => {
+    const initializeAndLoad = async () => {
+      try {
+        setLoading(true);
+        await databaseService.initialize();
+        await loadStandaloneSegments();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to initialize');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAndLoad();
+  }, []);
+
+  const loadStandaloneSegments = useCallback(async () => {
+    try {
+      const segments = await loopSegmentRepo.findStandalone();
+      setLoops(segments);
+    } catch (err) {
+      console.error('Error loading segments:', err);
+      setError('Failed to load segments');
+    }
+  }, []);
+
+  const loadSegmentsForRoutine = useCallback(async (routineId: string) => {
+    try {
+      const segments = await loopSegmentRepo.findByRoutineId(routineId);
+      setLoops(segments);
+    } catch (err) {
+      console.error('Error loading routine segments:', err);
+      setError('Failed to load routine segments');
+    }
+  }, []);
 
   // Clear loop checking when loop is disabled or player stops
   useEffect(() => {
@@ -76,34 +112,55 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
     setTempEnd(time);
   }, []);
 
-  const saveLoop = useCallback((name: string, startTime: number, endTime: number) => {
-    const newLoop: LoopSegment = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      name,
-      start_time: startTime,
-      end_time: endTime,
-      default_speed: 1.0,
-      created_at: new Date().toISOString(),
-      order_index: 0,
-      startTime,
-      endTime,
-      isActive: false
-    };
+  const saveLoop = useCallback(async (name: string, startTime: number, endTime: number, routineId?: string) => {
+    try {
+      setError(null);
 
-    setLoops(prev => [...prev, newLoop]);
-    setTempStart(null);
-    setTempEnd(null);
-  }, []);
+      const segmentData: CreateLoopSegment = {
+        song_routine_id: routineId,
+        name,
+        start_time: startTime,
+        end_time: endTime,
+        default_speed: 1.0,
+        order_index: await loopSegmentRepo.getNextOrderIndex(routineId),
+      };
 
-  const deleteLoop = useCallback((loopId: string) => {
-    setLoops(prev => prev.filter(loop => loop.id !== loopId));
+      await loopSegmentRepo.create(segmentData);
 
-    // If we're deleting the active loop, clear it
-    if (activeLoop?.id === loopId) {
-      setActiveLoop(null);
-      setIsLooping(false);
+      // Reload segments
+      if (routineId) {
+        await loadSegmentsForRoutine(routineId);
+      } else {
+        await loadStandaloneSegments();
+      }
+
+      // Clear temp points
+      setTempStart(null);
+      setTempEnd(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save segment');
+      throw err;
     }
-  }, [activeLoop]);
+  }, [loadStandaloneSegments, loadSegmentsForRoutine]);
+
+  const deleteLoop = useCallback(async (loopId: string) => {
+    try {
+      setError(null);
+      await loopSegmentRepo.delete(loopId);
+
+      // If we're deleting the active loop, clear it
+      if (activeLoop?.id === loopId) {
+        setActiveLoop(null);
+        setIsLooping(false);
+      }
+
+      // Reload segments
+      await loadStandaloneSegments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete segment');
+      throw err;
+    }
+  }, [activeLoop, loadStandaloneSegments]);
 
   const selectLoop = useCallback((loop: LoopSegment | null) => {
     setActiveLoop(loop);
@@ -124,16 +181,13 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
     // If we have temp points but no active loop, create a temporary active loop
     if (!activeLoop && tempStart !== null && tempEnd !== null) {
       const tempLoop: LoopSegment = {
-        id: 'temp-loop',
+        id: 'temp',
         name: `Temp Loop ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`,
         start_time: tempStart,
         end_time: tempEnd,
         default_speed: 1.0,
         created_at: new Date().toISOString(),
         order_index: 0,
-        startTime: tempStart,
-        endTime: tempEnd,
-        isActive: true
       };
       setActiveLoop(tempLoop);
     }
@@ -143,11 +197,8 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
 
       // If starting to loop, seek to loop start
       if (newLooping && playerRef.current) {
-        if (activeLoop) {
-          playerRef.current.seekTo(activeLoop.start_time);
-        } else if (tempStart !== null) {
-          playerRef.current.seekTo(tempStart);
-        }
+        const loopToUse = activeLoop || { start_time: tempStart!, end_time: tempEnd! };
+        playerRef.current.seekTo(loopToUse.start_time);
         lastSeekTimeRef.current = Date.now();
       }
 
@@ -155,12 +206,23 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
     });
   }, [activeLoop, tempStart, tempEnd, playerRef]);
 
-  const clearLoops = useCallback(() => {
-    setLoops([]);
-    setActiveLoop(null);
-    setIsLooping(false);
-    setTempStart(null);
-    setTempEnd(null);
+  const clearLoops = useCallback(async () => {
+    try {
+      setError(null);
+      // This clears all standalone loops - use with caution!
+      const standaloneSegments = await loopSegmentRepo.findStandalone();
+      for (const segment of standaloneSegments) {
+        await loopSegmentRepo.delete(segment.id);
+      }
+
+      setLoops([]);
+      setActiveLoop(null);
+      setIsLooping(false);
+      setTempStart(null);
+      setTempEnd(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to clear loops');
+    }
   }, []);
 
   const clearTempPoints = useCallback(() => {
@@ -176,12 +238,32 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
     setTempEnd(time);
   }, []);
 
+  const updateLoop = useCallback(async (loopId: string, updates: Partial<LoopSegment>) => {
+    try {
+      setError(null);
+      await loopSegmentRepo.update(loopId, updates);
+
+      // If updating the active loop, update it locally too
+      if (activeLoop?.id === loopId) {
+        setActiveLoop({ ...activeLoop, ...updates });
+      }
+
+      // Reload segments
+      await loadStandaloneSegments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update segment');
+      throw err;
+    }
+  }, [activeLoop, loadStandaloneSegments]);
+
   return {
     loops,
     activeLoop,
     isLooping,
     tempStart,
     tempEnd,
+    loading,
+    error,
     setLoopStart,
     setLoopEnd,
     saveLoop,
@@ -191,6 +273,9 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
     clearLoops,
     clearTempPoints,
     changeTempStart,
-    changeTempEnd
+    changeTempEnd,
+    updateLoop,
+    loadSegmentsForRoutine,
+    loadStandaloneSegments,
   };
 }

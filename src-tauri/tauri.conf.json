@@ -2,6 +2,11 @@
   "productName": "Segment Studio",
   "version": "0.1.0",
   "identifier": "com.segmentstudio.musicpractice",
+  "plugins": {
+    "sql": {
+      "preload": ["sqlite:segment_studio.db"]
+    }
+  },
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420"
@@ -17,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com; frame-src https://www.youtube.com; connect-src 'self' https://www.youtube.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';"
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: *.youtube.com *.googlevideo.com *.google.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: *.youtube.com *.google.com; frame-src * *.youtube.com https://youtube.com https://www.youtube.com; connect-src * *.youtube.com *.googlevideo.com *.google.com; img-src * data: blob: *.youtube.com *.googlevideo.com; style-src 'self' 'unsafe-inline' https: *.youtube.com; media-src * data: blob: *.youtube.com *.googlevideo.com;"
     }
   },
   "bundle": {
@@ -26,6 +31,9 @@
     "category": "Music",
     "copyright": "",
     "shortDescription": "Organize and practice with YouTube videos",
-    "longDescription": "A desktop application for organizing YouTube videos with precise loop controls and speed adjustment for practice and study."
+    "longDescription": "A desktop application for organizing YouTube videos with precise loop controls and speed adjustment for practice and study.",
+    "icon": [
+      "icons/icon.icns"
+    ]
   }
 }

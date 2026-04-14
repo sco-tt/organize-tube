@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Modal } from '../Modal/Modal';
 import { extractVideoId, validateYouTubeUrl } from '../../utils/testYouTube';
 import './LoadVideoModal.css';
@@ -17,6 +17,17 @@ export function LoadVideoModal({
   currentVideoUrl
 }: LoadVideoModalProps) {
   const [videoUrl, setVideoUrl] = useState(currentVideoUrl);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Ensure input gets focus when modal opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100); // Slight delay to ensure modal is fully rendered
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   const handleUrlSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +42,7 @@ export function LoadVideoModal({
     }
   }, [videoUrl, onVideoLoad, onClose]);
 
-  const handleQuickLoad = (url: string, title: string) => {
+  const handleQuickLoad = (url: string, _title: string) => {
     const id = extractVideoId(url);
     if (id) {
       setVideoUrl(url);
@@ -39,6 +50,20 @@ export function LoadVideoModal({
       onClose();
     }
   };
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    // Allow default paste behavior
+    setTimeout(() => {
+      const pastedText = e.currentTarget.value;
+      if (pastedText && validateYouTubeUrl(pastedText)) {
+        // Auto-extract and load if it's a valid YouTube URL
+        const id = extractVideoId(pastedText);
+        if (id) {
+          console.log('Auto-loading pasted YouTube URL:', pastedText);
+        }
+      }
+    }, 10);
+  }, []);
 
   const quickLoadOptions = [
     {
@@ -71,13 +96,16 @@ export function LoadVideoModal({
           <div className="input-section">
             <label htmlFor="video-url">YouTube URL</label>
             <input
+              ref={inputRef}
               id="video-url"
               type="text"
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
+              onPaste={handlePaste}
               placeholder="https://youtube.com/watch?v=..."
               className="url-input-modal"
               autoFocus
+              autoComplete="url"
             />
           </div>
 

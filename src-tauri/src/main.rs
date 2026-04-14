@@ -10,7 +10,20 @@ fn greet(name: &str) -> String {
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_sql::Builder::new().build())
+        .plugin(
+            tauri_plugin_sql::Builder::new()
+                .add_migrations(
+                    "sqlite:segment_studio.db",
+                    vec![tauri_plugin_sql::Migration {
+                        version: 1,
+                        description: "create_initial_tables",
+                        sql: include_str!("../migrations/001_initial.sql"),
+                        kind: tauri_plugin_sql::MigrationKind::Up,
+                    }],
+                )
+                .build(),
+        )
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

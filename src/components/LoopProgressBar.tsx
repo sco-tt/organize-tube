@@ -80,11 +80,11 @@ export function LoopProgressBar({
   let loopWidthPercent = 0;
 
   if (activeLoop && duration > 0) {
-    const loopDuration = activeLoop.endTime - activeLoop.startTime;
-    const timeInLoop = Math.max(0, Math.min(loopDuration, currentTime - activeLoop.startTime));
+    const loopDuration = activeLoop.end_time - activeLoop.start_time;
+    const timeInLoop = Math.max(0, Math.min(loopDuration, currentTime - activeLoop.start_time));
     loopProgress = loopDuration > 0 ? (timeInLoop / loopDuration) * 100 : 0;
 
-    loopStartPercent = (activeLoop.startTime / duration) * 100;
+    loopStartPercent = (activeLoop.start_time / duration) * 100;
     loopWidthPercent = (loopDuration / duration) * 100;
   }
 
@@ -128,7 +128,7 @@ export function LoopProgressBar({
         <span className="current-time">{formatTime(currentTime)}</span>
         {activeLoop && (
           <span className="loop-info">
-            Loop: {activeLoop.name} ({formatTime(activeLoop.startTime)} - {formatTime(activeLoop.endTime)})
+            Loop: {activeLoop.name} ({formatTime(activeLoop.start_time)} - {formatTime(activeLoop.end_time)})
           </span>
         )}
         <span className="total-time">{formatTime(duration)}</span>
@@ -154,7 +154,7 @@ export function LoopProgressBar({
             />
           </div>
           <div className="loop-progress-text">
-            {Math.round(loopProgress)}% ({formatTime(Math.max(0, currentTime - activeLoop.startTime))} / {formatTime(activeLoop.endTime - activeLoop.startTime)})
+            {Math.round(loopProgress)}% ({formatTime(Math.max(0, currentTime - activeLoop.start_time))} / {formatTime(activeLoop.end_time - activeLoop.start_time)})
           </div>
         </div>
       )}

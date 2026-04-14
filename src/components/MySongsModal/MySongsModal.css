@@ -21,6 +21,12 @@
   color: #374151;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .songs-count {
   font-size: 0.9rem;
   color: #6b7280;
@@ -28,6 +34,28 @@
   padding: 4px 12px;
   border-radius: 12px;
   font-weight: 500;
+}
+
+.import-btn {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.import-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.import-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
 }
 
 .my-songs-controls {
@@ -314,6 +342,10 @@
   .songs-count {
     background: #374151;
     color: #d1d5db;
+  }
+
+  .import-btn:disabled {
+    background: #4b5563;
   }
 
   .search-input,

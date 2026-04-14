@@ -78,11 +78,18 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
 
         playerRef.current = new window.YT.Player(playerElementRef.current, {
           videoId: videoId,
+          host: 'https://www.youtube-nocookie.com',
           playerVars: {
             enablejsapi: 1,
             controls: 1,
             modestbranding: 1,
             rel: 0,
+            autoplay: 0,
+            fs: 1,
+            disablekb: 0,
+            iv_load_policy: 3,
+            playsinline: 1,
+            origin: window.location.origin
           },
           events: {
             onReady: (event: any) => {

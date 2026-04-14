@@ -60,6 +60,19 @@ export function LoopControls({
     }
   }, [loops.length]);
 
+  // Update active temp loop when temp times change
+  useEffect(() => {
+    if (activeLoop?.id === 'temp' && tempStart !== null && tempEnd !== null) {
+      const updatedTempLoop = {
+        ...activeLoop,
+        startTime: tempStart,
+        endTime: tempEnd,
+        name: `Temp Loop ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`
+      };
+      onSelectLoop(updatedTempLoop);
+    }
+  }, [tempStart, tempEnd, activeLoop, onSelectLoop]);
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -105,9 +118,14 @@ export function LoopControls({
   }, [tempStart, tempEnd, onSaveLoop]);
 
   const handleClearTemp = useCallback(() => {
+    // If currently looping a temp loop, stop it
+    if (activeLoop?.id === 'temp' && isLooping) {
+      onToggleLoop(); // Stop looping
+      onSelectLoop(null); // Clear active loop
+    }
     onClearTempPoints();
     setShowSaveDialog(false);
-  }, [onClearTempPoints]);
+  }, [onClearTempPoints, activeLoop, isLooping, onToggleLoop, onSelectLoop]);
 
   const handlePlayLoop = useCallback((loop: LoopSegment) => {
     // Select the loop
@@ -133,14 +151,18 @@ export function LoopControls({
       </div>
 
       {/* Current Loop Info */}
-      {activeLoop && (
-        <div className="current-loop">
+      <div className={`current-loop ${activeLoop ? 'active' : 'inactive'}`}>
+        {activeLoop ? (
           <div className="loop-info">
             <strong>{activeLoop.name}</strong>
-            <span>{formatTime(activeLoop.startTime)} → {formatTime(activeLoop.endTime)}</span>
+            <span>{formatTime(activeLoop.start_time)} → {formatTime(activeLoop.end_time)}</span>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="loop-info placeholder">
+            <span>&nbsp;</span>
+          </div>
+        )}
+      </div>
 
       {/* Loop Point Setting */}
       <div className="collapsible-section">
@@ -206,7 +228,18 @@ export function LoopControls({
                     <>
                       <div className="temp-action-row">
                         <button onClick={() => {
-                          const tempLoop = { id: 'temp', name: 'Temp', startTime: tempStart!, endTime: tempEnd!, isActive: false };
+                          const tempLoop: LoopSegment = {
+                            id: 'temp',
+                            name: 'Temp',
+                            start_time: tempStart!,
+                            end_time: tempEnd!,
+                            default_speed: 1.0,
+                            created_at: new Date().toISOString(),
+                            order_index: 0,
+                            startTime: tempStart!,
+                            endTime: tempEnd!,
+                            isActive: false
+                          };
                           handlePlayLoop(tempLoop);
                         }} className="temp-play">
                           ▶️
@@ -273,7 +306,7 @@ export function LoopControls({
                     <div className="loop-details">
                       <span className="loop-name">{loop.name}</span>
                       <span className="loop-time">
-                        {formatTime(loop.startTime)} → {formatTime(loop.endTime)}
+                        {formatTime(loop.start_time)} → {formatTime(loop.end_time)}
                       </span>
                     </div>
                     <div className="loop-actions">

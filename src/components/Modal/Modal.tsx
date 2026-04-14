@@ -36,13 +36,10 @@ export function Modal({
       // Store currently focused element
       previousFocusRef.current = document.activeElement as HTMLElement;
 
-      // Focus modal content
-      if (modalRef.current) {
-        modalRef.current.focus();
-      }
-
       // Prevent body scroll
       document.body.style.overflow = 'hidden';
+
+      // Don't force focus - let autoFocus attributes work naturally
     } else {
       // Restore focus to previous element
       if (previousFocusRef.current) {
@@ -74,7 +71,6 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        tabIndex={-1}
       >
         <div className="modal-header">
           <h2 id="modal-title" className="modal-title">

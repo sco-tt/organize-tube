@@ -1,32 +1,32 @@
-import React, { useState } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Modal } from '../Modal/Modal';
 import { EditSongModal } from '../EditSongModal/EditSongModal';
+import { useSavedSongs } from '../../hooks/useSavedSongs';
+import { SongRoutine } from '../../repositories/songRoutineRepository';
+import { CSVImportService, ImportResult } from '../../services/csvImportService';
 import './MySongsModal.css';
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  url: string;
-  duration: number;
-  segmentCount: number;
-  lastPracticed?: string;
-  createdAt: string;
-  tags: string[];
-}
 
 interface MySongsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSongSelect: (songId: string, url: string) => void;
-  savedSongs: Song[];
-  onSongsUpdate: (songs: Song[]) => void;
 }
 
-export function MySongsModal({ isOpen, onClose, onSongSelect, savedSongs, onSongsUpdate }: MySongsModalProps) {
+export function MySongsModal({ isOpen, onClose, onSongSelect }: MySongsModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'artist' | 'created'>('recent');
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [editingSong, setEditingSong] = useState<SongRoutine | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    songs: savedSongs,
+    loading,
+    error,
+    deleteSong,
+    updateSong,
+    markPracticed
+  } = useSavedSongs();
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -45,75 +45,71 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, savedSongs, onSong
     return date.toLocaleDateString();
   };
 
-  const filteredAndSortedSongs = savedSongs
-    .filter(song =>
-      song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      song.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      song.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'recent':
-          if (!a.lastPracticed && !b.lastPracticed) return 0;
-          if (!a.lastPracticed) return 1;
-          if (!b.lastPracticed) return -1;
-          return new Date(b.lastPracticed).getTime() - new Date(a.lastPracticed).getTime();
-        case 'title':
-          return a.title.localeCompare(b.title);
-        case 'artist':
-          return a.artist.localeCompare(b.artist);
-        case 'created':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        default:
-          return 0;
-      }
-    });
+  const filteredAndSortedSongs = useMemo(() => {
+    return savedSongs
+      .filter(song =>
+        (song.title?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
+        (song.artist?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
+        (song.name?.toLowerCase().includes(searchQuery.toLowerCase()) || '')
+      )
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'recent':
+            if (!a.last_practiced && !b.last_practiced) return 0;
+            if (!a.last_practiced) return 1;
+            if (!b.last_practiced) return -1;
+            return new Date(b.last_practiced).getTime() - new Date(a.last_practiced).getTime();
+          case 'title':
+            return (a.title || a.name).localeCompare(b.title || b.name);
+          case 'artist':
+            return (a.artist || '').localeCompare(b.artist || '');
+          case 'created':
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          default:
+            return 0;
+        }
+      });
+  }, [savedSongs, searchQuery, sortBy]);
 
-  const handleSongSelect = (song: Song) => {
+  const handleSongSelect = (song: SongRoutine) => {
     onSongSelect(song.id, song.url);
+    markPracticed(song.id).catch(console.error);
     onClose();
   };
 
-  const handleEdit = (song: Song) => {
+  const handleEdit = (song: SongRoutine) => {
     setEditingSong(song);
   };
 
-  const handleSaveEdit = (updatedSong: Song) => {
-    const updatedSongs = savedSongs.map(song =>
-      song.id === updatedSong.id ? updatedSong : song
-    );
-    onSongsUpdate(updatedSongs);
-    localStorage.setItem('organize-tube-songs', JSON.stringify(updatedSongs));
-    setEditingSong(null);
+  const handleSaveEdit = async (updatedSong: SongRoutine) => {
+    try {
+      await updateSong(updatedSong.id, {
+        name: updatedSong.name,
+        title: updatedSong.title,
+        artist: updatedSong.artist,
+        notes: updatedSong.notes,
+        freeform_notes: updatedSong.freeform_notes,
+        volume: updatedSong.volume
+      });
+      setEditingSong(null);
+    } catch (error) {
+      console.error('Error saving song edit:', error);
+      alert('Error saving changes');
+    }
   };
 
-  const handleDelete = (songId: string) => {
-    console.log('Delete function called with songId:', songId);
-
-    // Simple test first
-    alert(`Attempting to delete song with ID: ${songId}`);
-
+  const handleDelete = async (songId: string) => {
     const songToDelete = savedSongs.find(song => song.id === songId);
     if (!songToDelete) {
       alert('Song not found!');
       return;
     }
 
-    const songTitle = songToDelete.title;
+    const songTitle = songToDelete.title || songToDelete.name;
 
     if (window.confirm(`Are you sure you want to delete "${songTitle}"?`)) {
       try {
-        const updatedSongs = savedSongs.filter(song => song.id !== songId);
-        console.log('Before update - songs count:', savedSongs.length);
-        console.log('After update - songs count:', updatedSongs.length);
-
-        // Update state
-        onSongsUpdate(updatedSongs);
-
-        // Update localStorage
-        localStorage.setItem('organize-tube-songs', JSON.stringify(updatedSongs));
-
-        alert('Song deleted successfully!');
+        await deleteSong(songId);
       } catch (error) {
         console.error('Error deleting song:', error);
         alert('Error deleting song');
@@ -121,13 +117,75 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, savedSongs, onSong
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+
+    try {
+      const content = await file.text();
+      const importService = new CSVImportService();
+
+      let results: ImportResult;
+
+      if (file.name.endsWith('.json')) {
+        results = await importService.importBackupFromJSON(content);
+      } else if (file.name.includes('songs') || file.name.endsWith('.csv')) {
+        results = await importService.importSongsFromCSV(content);
+      } else {
+        // Default to songs import for generic CSV
+        results = await importService.importSongsFromCSV(content);
+      }
+
+
+      // Show success message
+      if (results.success > 0) {
+        alert(`Import successful! ${results.success} songs imported, ${results.skipped} skipped.`);
+        // The songs list will automatically update due to the useSavedSongs hook
+      } else {
+        alert('No songs were imported. Check file format or see error details.');
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsImporting(false);
+      // Clear the file input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} size="lg" title="My Songs">
       <div className="my-songs-modal">
         <div className="my-songs-header">
           <h2>📂 My Songs</h2>
-          <div className="songs-count">
-            {filteredAndSortedSongs.length} song{filteredAndSortedSongs.length !== 1 ? 's' : ''}
+          <div className="header-actions">
+            <div className="songs-count">
+              {filteredAndSortedSongs.length} song{filteredAndSortedSongs.length !== 1 ? 's' : ''}
+            </div>
+            <button
+              onClick={handleImportClick}
+              disabled={isImporting}
+              className="import-btn"
+              title="Import songs from CSV or JSON file"
+            >
+              {isImporting ? '⏳ Importing...' : '📥 Import'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.json"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
           </div>
         </div>
 
@@ -159,7 +217,18 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, savedSongs, onSong
         </div>
 
         <div className="songs-list">
-          {filteredAndSortedSongs.length === 0 ? (
+          {loading ? (
+            <div className="loading-state">
+              <div className="loading-spinner">⟳</div>
+              <p>Loading songs...</p>
+            </div>
+          ) : error ? (
+            <div className="error-state">
+              <div className="error-icon">⚠️</div>
+              <h3>Error loading songs</h3>
+              <p>{error}</p>
+            </div>
+          ) : filteredAndSortedSongs.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">🎵</div>
               <h3>No songs found</h3>
@@ -178,29 +247,21 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, savedSongs, onSong
 
                 <div className="song-info">
                   <div className="song-primary">
-                    <h3 className="song-title">{song.title}</h3>
+                    <h3 className="song-title">{song.title || song.name}</h3>
                     <p className="song-artist">{song.artist}</p>
                   </div>
 
                   <div className="song-details">
-                    <span className="song-duration">{formatDuration(song.duration)}</span>
-                    <span className="song-segments">{song.segmentCount} segments</span>
-                    {song.lastPracticed && (
+                    <span className="song-duration">{formatDuration(song.duration || 0)}</span>
+                    <span className="song-volume">Vol: {song.volume}%</span>
+                    {song.last_practiced && (
                       <span className="song-last-practiced">
-                        Practiced {formatDate(song.lastPracticed)}
+                        Practiced {formatDate(song.last_practiced)}
                       </span>
                     )}
                   </div>
 
-                  {song.tags.length > 0 && (
-                    <div className="song-tags">
-                      {song.tags.map((tag) => (
-                        <span key={tag} className="tag">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {/* TODO: Implement tags display with new SQLite structure */}
                 </div>
 
                 <div className="song-actions">

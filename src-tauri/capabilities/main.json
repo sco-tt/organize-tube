@@ -1,0 +1,20 @@
+{
+  "identifier": "main",
+  "description": "Main application capabilities for Segment Studio",
+  "remote": {
+    "urls": []
+  },
+  "local": true,
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:webview:default",
+    "core:window:default",
+    "sql:default",
+    "sql:allow-load",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-close",
+    "core:path:default"
+  ]
+}

@@ -1,4 +1,4 @@
-.sidebar-tabs {
+.sidebar-fixed {
   height: 100%;
   width: 100%;
   min-width: 0;
@@ -10,38 +10,47 @@
   box-sizing: border-box;
 }
 
-.tab-header {
-  display: flex;
+.fixed-header {
+  padding: 16px 20px 12px 20px;
   border-bottom: 1px solid #e2e8f0;
   background: #f8fafc;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.tab-button {
-  flex: 1;
-  padding: 12px 16px;
+.fixed-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-button {
+  background: none;
   border: none;
-  background: transparent;
-  font-size: 14px;
-  font-weight: 500;
-  color: #64748b;
+  font-size: 16px;
   cursor: pointer;
-  border-bottom: 3px solid transparent;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #6b7280;
   transition: all 0.2s ease;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.tab-button:hover {
-  background: #f1f5f9;
-  color: #475569;
+.config-button:hover {
+  background: #e5e7eb;
+  color: #374151;
+  transform: rotate(90deg);
 }
 
-.tab-button.active {
-  background: #fff;
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
-}
-
-.tab-content {
+.fixed-content {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -50,20 +59,20 @@
   min-width: 0;
   max-width: 100%;
   min-height: 0;
-  height: calc(100vh - 60px);
-  max-height: calc(100vh - 60px);
+  height: calc(100vh - 80px);
+  max-height: calc(100vh - 80px);
   box-sizing: border-box;
   /* Hide scrollbar */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
 }
 
-.tab-content::-webkit-scrollbar {
+.fixed-content::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
 
 /* Ensure loop controls fit properly in sidebar */
-.tab-content .loop-controls {
+.fixed-content .loop-controls {
   margin: 0;
   border-radius: 0;
   border: none;
@@ -77,13 +86,13 @@
 }
 
 /* Ensure all child elements within loop controls respect width */
-.tab-content .loop-controls * {
+.fixed-content .loop-controls * {
   max-width: 100%;
   box-sizing: border-box;
 }
 
 /* Fix loop toggle button in sidebar */
-.tab-content .loop-controls .loop-toggle {
+.fixed-content .loop-controls .loop-toggle {
   padding: 6px 10px;
   font-size: 12px;
   white-space: nowrap;
@@ -94,14 +103,14 @@
 }
 
 /* Adjust header layout for sidebar */
-.tab-content .loop-controls .loop-header {
+.fixed-content .loop-controls .loop-header {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }
 
 /* Fix collapsible sections in sidebar */
-.tab-content .loop-controls .section-header {
+.fixed-content .loop-controls .section-header {
   width: 100%;
   max-width: 100%;
   font-size: 13px;
@@ -112,40 +121,39 @@
   text-overflow: ellipsis;
 }
 
-.tab-content .loop-controls .section-header span:first-child {
+.fixed-content .loop-controls .section-header span:first-child {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tab-content .loop-controls .expand-icon {
+.fixed-content .loop-controls .expand-icon {
   flex-shrink: 0;
   margin-left: 8px;
 }
 
 /* Make loop control buttons more compact in sidebar */
-.tab-content .loop-controls .loop-buttons {
+.fixed-content .loop-controls .loop-buttons {
   gap: 8px;
 }
 
-.tab-content .loop-controls .loop-buttons button,
-.tab-content .loop-controls .temp-loop-actions button {
+.fixed-content .loop-controls .loop-buttons button,
+.fixed-content .loop-controls .temp-loop-actions button {
   padding: 8px 12px;
   font-size: 12px;
   border-radius: 4px;
 }
 
-.tab-content .loop-controls .set-start,
-.tab-content .loop-controls .set-end {
+.fixed-content .loop-controls .set-start,
+.fixed-content .loop-controls .set-end {
   flex: 1;
   min-width: 0;
   font-size: 11px;
   padding: 6px 8px;
 }
 
-.tab-content .sets-sidebar,
-.tab-content .loop-controls {
+.fixed-content .loop-controls {
   height: 100%;
   width: 100%;
   max-width: 100%;
@@ -155,35 +163,36 @@
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-  .sidebar-tabs {
+  .sidebar-fixed {
     background: #1e293b;
   }
 
-  .tab-header {
+  .fixed-header {
     background: #0f172a;
     border-color: #334155;
   }
 
-  .tab-button {
-    color: #94a3b8;
-  }
-
-  .tab-button:hover {
-    background: #334155;
+  .fixed-header h3 {
     color: #e2e8f0;
   }
 
-  .tab-button.active {
-    background: #1e293b;
-    color: #60a5fa;
-    border-bottom-color: #60a5fa;
+  .config-button {
+    color: #9ca3af;
+  }
+
+  .config-button:hover {
+    background: #374155;
+    color: #e2e8f0;
   }
 }
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-  .tab-button {
-    padding: 10px 12px;
-    font-size: 12px;
+  .fixed-header {
+    padding: 12px 16px 8px 16px;
+  }
+
+  .fixed-header h3 {
+    font-size: 14px;
   }
 }

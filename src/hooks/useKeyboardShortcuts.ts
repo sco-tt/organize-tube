@@ -21,15 +21,14 @@ export function useKeyboardShortcuts({
 }: KeyboardShortcutsProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in inputs
+      // Don't trigger shortcuts when typing in inputs or when any modal is open
       if (event.target instanceof HTMLInputElement ||
           event.target instanceof HTMLTextAreaElement ||
-          event.target instanceof HTMLSelectElement) {
-        return;
-      }
-
-      // Don't trigger when modals are open
-      if (document.querySelector('.modal')) {
+          event.target instanceof HTMLSelectElement ||
+          document.querySelector('.modal-backdrop') ||
+          (event.target as Element)?.closest('[role="dialog"]') ||
+          (document.activeElement instanceof HTMLInputElement) ||
+          (document.activeElement instanceof HTMLTextAreaElement)) {
         return;
       }
 
@@ -87,9 +86,17 @@ export function useKeyboardShortcuts({
       }
     };
 
-    // Handle clicks to remove focus from YouTube iframe
+    // Handle clicks to remove focus from YouTube iframe (but not from inputs/modals)
     const handleClick = (event: MouseEvent) => {
       const target = event.target as Element;
+
+      // Don't interfere with clicks on modals or inputs
+      if (target.closest('.modal-backdrop') ||
+          target.closest('input, textarea, button, select') ||
+          target.closest('[role="dialog"]')) {
+        return;
+      }
+
       // If clicking outside the video player, blur any focused iframes
       if (!target.closest('.youtube-player-container')) {
         const iframes = document.querySelectorAll('iframe');
@@ -98,22 +105,26 @@ export function useKeyboardShortcuts({
             iframe.blur();
           }
         });
-        // Ensure document has focus for keyboard shortcuts
-        if (document.activeElement && document.activeElement !== document.body) {
-          (document.activeElement as HTMLElement).blur();
+
+        // Only blur and refocus if not clicking on an interactive element
+        const activeEl = document.activeElement as HTMLElement;
+        if (activeEl && activeEl.tagName === 'IFRAME') {
+          document.body.focus();
         }
-        document.body.focus();
       }
     };
 
-    // Also add a periodic focus check to ensure shortcuts work
+    // Only refocus body if focus is on unwanted elements (like iframes), not on inputs
     const focusInterval = setInterval(() => {
-      // If no specific element needs focus, ensure body has focus for shortcuts
-      if (document.activeElement === document.documentElement ||
-          (document.activeElement as HTMLElement)?.tagName === 'IFRAME') {
+      const activeEl = document.activeElement as HTMLElement;
+
+      // Only refocus if current focus is on iframe or document, NOT on inputs/textareas
+      if ((activeEl?.tagName === 'IFRAME' || activeEl === document.documentElement) &&
+          !document.querySelector('.modal-backdrop') &&
+          !document.querySelector('input:focus, textarea:focus')) {
         document.body.focus();
       }
-    }, 1000);
+    }, 2000); // Reduced frequency to be less aggressive
 
     document.addEventListener('keydown', handleKeyDown, true);
     document.addEventListener('click', handleClick, true);

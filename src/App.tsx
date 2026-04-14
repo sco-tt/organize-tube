@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { YouTubePlayer, YouTubePlayerHandle } from "./components/YouTubePlayer";
 import { LoopProgressBar } from "./components/LoopProgressBar";
 import { SidebarTabs } from "./components/SidebarTabs/SidebarTabs";
@@ -7,10 +7,11 @@ import { SpeedControlModal } from "./components/SpeedControlModal/SpeedControlMo
 import { LoadVideoModal } from "./components/LoadVideoModal/LoadVideoModal";
 import { MySongsModal } from "./components/MySongsModal/MySongsModal";
 import { Toast } from "./components/Toast/Toast";
-import { useLoopControls } from "./hooks/useLoopControls";
+import { useLoopControlsSQLite } from "./hooks/useLoopControlsSQLite";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useModal } from "./hooks/useModal";
-import { extractVideoId, validateYouTubeUrl } from "./utils/testYouTube";
+import { useSavedSongs } from "./hooks/useSavedSongs";
+import { extractVideoId } from "./utils/testYouTube";
 import "./App.css";
 
 function App() {
@@ -31,22 +32,15 @@ function App() {
   const [isSavingSong, setIsSavingSong] = useState(false);
   const [songTags, setSongTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
-  const [savedSongs, setSavedSongs] = useState<any[]>([]);
   const [volume, setVolume] = useState(100);
 
   const playerRef = useRef<YouTubePlayerHandle>(null);
 
-  // Load saved songs from localStorage on startup
-  useEffect(() => {
-    const stored = localStorage.getItem('segment-studio-songs');
-    if (stored) {
-      try {
-        setSavedSongs(JSON.parse(stored));
-      } catch (error) {
-        console.error('Failed to load saved songs:', error);
-      }
-    }
-  }, []);
+  // Saved songs
+  const {
+    saveSong,
+    checkUrlExists
+  } = useSavedSongs();
 
   // Loop controls
   const {
@@ -65,22 +59,9 @@ function App() {
     clearTempPoints,
     changeTempStart,
     changeTempEnd
-  } = useLoopControls({ playerRef, isPlaying });
+  } = useLoopControlsSQLite({ playerRef, isPlaying });
 
 
-  const handleUrlSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateYouTubeUrl(videoUrl)) {
-      alert('Please enter a valid YouTube URL');
-      return;
-    }
-    const id = extractVideoId(videoUrl);
-    if (id) {
-      setVideoId(id);
-      setCurrentSpeed(1.0); // Reset speed when loading new video
-      clearLoops(); // Clear any temporary loops
-    }
-  }, [videoUrl, clearLoops]);
 
   const togglePlayPause = useCallback(() => {
     if (playerRef.current) {
@@ -194,11 +175,6 @@ function App() {
   const essentialSpeeds = [0.5, 0.7, 0.8, 0.9, 1.0];
   const allSpeedOptions = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
-  const handleVideoSelect = useCallback((videoId: string) => {
-    setVideoId(videoId);
-    setVideoUrl(`https://www.youtube.com/watch?v=${videoId}`);
-    clearLoops(); // Clear any temporary loops
-  }, [clearLoops]);
 
   const handleVideoLoad = useCallback((videoId: string, videoUrl: string) => {
     setVideoId(videoId);
@@ -251,84 +227,82 @@ function App() {
 
     try {
       // Get video title and artist from YouTube oEmbed API
+      console.log('Fetching video title for:', videoId);
       const { title: videoTitle, author: videoArtist } = await fetchVideoTitle(videoId);
+      console.log('Got video info:', { videoTitle, videoArtist });
 
-      const newSong = {
-        id: Date.now().toString(),
-        title: videoTitle,
-        artist: videoArtist,
+      // Check if URL already exists
+      console.log('Checking if URL exists:', videoUrl);
+      const urlExists = await checkUrlExists(videoUrl);
+      if (urlExists) {
+        showToastNotification('This video is already saved!');
+        setIsSavingSong(false);
+        return;
+      }
+
+      const songData = {
+        name: videoTitle || 'Untitled',
+        title: videoTitle || '',
+        artist: videoArtist || '',
         url: videoUrl,
-        videoId: videoId,
         duration: duration || 0,
-        segmentCount: loops.length,
-        segments: loops,
-        lastPracticed: new Date().toISOString().split('T')[0],
-        createdAt: new Date().toISOString().split('T')[0],
-        tags: [...songTags],
         notes: '',
-        volume: volume
+        freeform_notes: '',
+        volume: volume || 100
       };
 
-      const updatedSongs = [...savedSongs, newSong];
-      setSavedSongs(updatedSongs);
-      localStorage.setItem('segment-studio-songs', JSON.stringify(updatedSongs));
+      console.log('Attempting to save song data:', songData);
+      await saveSong(songData);
 
-      showToastNotification(`"${videoTitle}" saved successfully! 💾`);
+      // Save any standalone segments as segments for this song
+      if (loops.length > 0) {
+        // TODO: Save loops as segments for this song
+      }
+
+      showToastNotification(`"${videoTitle || 'Song'}" saved successfully! 💾`);
       setIsSavingSong(false);
     } catch (error) {
-      showToastNotification('Failed to save song');
+      console.error('Failed to save song - Full error object:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error toString:', error?.toString());
+      console.error('Error stack:', (error as any)?.stack);
+
+      let errorMessage = 'Unknown error occurred';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object') {
+        errorMessage = JSON.stringify(error);
+      }
+
+      console.error('Final error message:', errorMessage);
+      showToastNotification(`Failed to save song: ${errorMessage}`);
       setIsSavingSong(false);
     }
-  }, [videoId, videoUrl, duration, loops, songTags, savedSongs, showToastNotification, fetchVideoTitle]);
+  }, [videoId, videoUrl, duration, loops, songTags, showToastNotification, fetchVideoTitle, saveSong, checkUrlExists]);
 
-  const handleSongSelect = useCallback((songId: string, songUrl: string) => {
+  const handleSongSelect = useCallback((_songId: string, songUrl: string) => {
     const id = extractVideoId(songUrl);
     if (id) {
-      // Find the saved song to load its tags and other data
-      const savedSong = savedSongs.find(song => song.videoId === id);
-
       setVideoId(id);
       setVideoUrl(songUrl);
       setCurrentSpeed(1.0);
       clearLoops();
 
-      // Load saved tags and volume if song exists
-      if (savedSong) {
-        setSongTags(savedSong.tags || []);
+      // TODO: Load saved song data from SQLite using songId
+      // For now, just reset to defaults
+      setSongTags([]);
+      setVolume(100);
 
-        // Restore saved volume
-        const savedVolume = savedSong.volume ?? 100;
-        setVolume(savedVolume);
-        if (playerRef.current) {
-          playerRef.current.setVolume(savedVolume);
-        }
-
-        // Update last practiced date
-        const updatedSongs = savedSongs.map(song =>
-          song.id === savedSong.id
-            ? { ...song, lastPracticed: new Date().toISOString().split('T')[0] }
-            : song
-        );
-        setSavedSongs(updatedSongs);
-        localStorage.setItem('segment-studio-songs', JSON.stringify(updatedSongs));
-      } else {
-        setSongTags([]);
-        setVolume(100); // Reset to default volume for new videos
-      }
+      // TODO: Load segments for this song
+      // TODO: Load tags for this song
 
       showToastNotification('Song loaded successfully! 🎵');
     }
-  }, [clearLoops, showToastNotification, savedSongs]);
+  }, [clearLoops, showToastNotification]);
 
-  const handleUrlBlur = useCallback(() => {
-    if (videoUrl && validateYouTubeUrl(videoUrl)) {
-      const id = extractVideoId(videoUrl);
-      if (id && id !== videoId) {
-        setVideoId(id);
-        setCurrentSpeed(1.0);
-      }
-    }
-  }, [videoUrl, videoId]);
 
   return (
     <div className="app-container" tabIndex={0}>
@@ -600,7 +574,6 @@ function App() {
             onClearTempPoints={clearTempPoints}
             onChangeTempStart={changeTempStart}
             onChangeTempEnd={changeTempEnd}
-            onVideoSelect={handleVideoSelect}
           />
         </aside>
       </div>
@@ -629,8 +602,6 @@ function App() {
         isOpen={mySongsModal.isOpen}
         onClose={mySongsModal.close}
         onSongSelect={handleSongSelect}
-        savedSongs={savedSongs}
-        onSongsUpdate={setSavedSongs}
       />
 
       <Toast
