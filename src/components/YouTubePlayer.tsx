@@ -29,7 +29,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const [currentTime, setCurrentTime] = useState(0);
 
     // Use GitHub Pages for YouTube embed
-    const embedUrl = "https://sco-tt.github.io/slow-set/";
+    const embedUrl = "https://sco-tt.github.io/organize-tube/";
 
     // Message handler for communication with external iframe
     useEffect(() => {
@@ -100,13 +100,13 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       }
     }, [videoId, embedUrl]);
 
-    // Set up time update interval
+    // Set up time update interval - use faster polling for better responsiveness
     useEffect(() => {
       if (!isReady) return;
 
       const interval = setInterval(() => {
         sendMessage({ type: 'get-time' });
-      }, 1000);
+      }, 250); // Reduced from 1000ms to 250ms for smoother loops
 
       return () => clearInterval(interval);
     }, [isReady]);

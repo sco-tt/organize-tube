@@ -131,7 +131,14 @@
 
                 case 'seek':
                     if (player && isReady && data && typeof data.time === 'number') {
-                        player.seekTo(data.time);
+                        player.seekTo(data.time, true); // allowSeekAhead=true for faster seeking
+                        // Send immediate time update after seek
+                        setTimeout(() => {
+                            if (player && isReady) {
+                                const time = player.getCurrentTime();
+                                window.parent.postMessage({type: 'current-time', time: time}, '*');
+                            }
+                        }, 50);
                     }
                     break;
 
@@ -170,24 +177,30 @@
             }
         });
 
-        // Send periodic time updates to parent
+        // Send periodic time updates to parent - optimized for smoother loops
+        let lastTime = 0;
+        let lastDuration = 0;
         setInterval(function() {
             if (player && isReady) {
                 try {
                     const time = player.getCurrentTime();
                     const duration = player.getDuration();
-                    if (time && duration) {
+
+                    // Only send updates if time has changed significantly (reduces postMessage overhead)
+                    if ((Math.abs(time - lastTime) > 0.05 || Math.abs(duration - lastDuration) > 0.1) && time && duration) {
                         window.parent.postMessage({
                             type: 'time-update',
                             time: time,
                             duration: duration
                         }, '*');
+                        lastTime = time;
+                        lastDuration = duration;
                     }
                 } catch (e) {
                     // Ignore errors during periodic updates
                 }
             }
-        }, 1000);
+        }, 100); // Increased frequency to 100ms for smoother loops
 
         // Log when page loads
         console.log('YouTube player page loaded');
