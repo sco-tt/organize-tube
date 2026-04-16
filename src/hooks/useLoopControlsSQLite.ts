@@ -70,8 +70,8 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
         try {
           const current = playerRef.current.getCurrentTime();
 
-          // Check if we've passed the end time (with small buffer for precision)
-          if (current >= activeLoop.end_time - 0.1) {
+          // Check if we've passed the end time (with smaller buffer for tighter loops)
+          if (current >= activeLoop.end_time - 0.05) {
             console.log(`Loop reached end at ${current.toFixed(2)}s, seeking back to ${activeLoop.start_time.toFixed(2)}s`);
 
             // Set cooldown to prevent rapid seeking
@@ -83,7 +83,7 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
             // Clear cooldown after a short delay
             setTimeout(() => {
               seekCooldownRef.current = false;
-            }, 300);
+            }, 50); // Reduced from 300ms to 50ms for faster loops
           }
 
           // Also check if we've somehow gone outside the loop bounds
@@ -95,7 +95,7 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
           console.warn('Error in loop checking:', error);
         }
       }
-    }, 50); // Check every 50ms for better precision
+    }, 25); // Check every 25ms for better precision and faster response
 
     return () => {
       if (loopCheckIntervalRef.current) {

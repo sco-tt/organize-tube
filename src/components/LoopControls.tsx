@@ -71,7 +71,7 @@ export function LoopControls({
       };
       onSelectLoop(updatedTempLoop);
     }
-  }, [tempStart, tempEnd, activeLoop, onSelectLoop]);
+  }, [tempStart, tempEnd]); // Removed activeLoop and onSelectLoop to prevent infinite loop
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
