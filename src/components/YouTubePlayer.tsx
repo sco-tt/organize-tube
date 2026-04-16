@@ -1,12 +1,5 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
-
 export interface YouTubePlayerHandle {
   playVideo: () => void;
   pauseVideo: () => void;
@@ -29,199 +22,132 @@ interface YouTubePlayerProps {
 }
 
 export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(
-  ({ videoId, onReady, onStateChange, onTimeUpdate, onDurationChange, onVolumeChange }, ref) => {
-    const playerElementRef = useRef<HTMLDivElement>(null);
-    const playerRef = useRef<any>(null);
-    const [isAPIReady, setIsAPIReady] = useState(false);
-    const onVolumeChangeRef = useRef(onVolumeChange);
+  ({ videoId, onReady, onStateChange, onTimeUpdate, onDurationChange }, ref) => {
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [isReady, setIsReady] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
 
-    // Update ref when callback changes
-    onVolumeChangeRef.current = onVolumeChange;
+    // Use GitHub Pages for YouTube embed
+    const embedUrl = "https://sco-tt.github.io/slow-set/";
 
-    // Load YouTube IFrame Player API
+    // Message handler for communication with external iframe
     useEffect(() => {
-      if (!window.YT) {
-        const script = document.createElement('script');
-        script.src = 'https://www.youtube.com/iframe_api';
-        document.body.appendChild(script);
+      const handleMessage = (event: MessageEvent) => {
+        // Allow messages from GitHub Pages domain
+        if (event.origin !== 'https://sco-tt.github.io') return;
 
-        window.onYouTubeIframeAPIReady = () => {
-          setIsAPIReady(true);
-        };
-      } else if (window.YT && window.YT.Player) {
-        setIsAPIReady(true);
-      }
+        const { type, state, error, time, duration: dur } = event.data;
 
-      return () => {
-        // Cleanup on unmount
-        if (playerRef.current) {
-          try {
-            playerRef.current.destroy();
-          } catch (e) {
-            console.log('Error destroying player:', e);
-          }
+        switch (type) {
+          case 'player-ready':
+            setIsReady(true);
+            if (onReady) onReady();
+            break;
+          case 'state-change':
+            if (onStateChange) onStateChange(state);
+            break;
+          case 'error':
+            console.error('YouTube Player Error:', error);
+            const errorMessages: { [key: number]: string } = {
+              2: 'Invalid video ID',
+              5: 'HTML5 player error',
+              100: 'Video not found or private',
+              101: 'Embedding not allowed by video owner',
+              150: 'Embedding not allowed by video owner',
+              151: 'Embedding not allowed by video owner',
+              153: 'Embedding not allowed by video owner'
+            };
+            const message = errorMessages[error] || `Unknown error: ${error}`;
+            alert(`YouTube Error ${error}: ${message}\n\nTry a different video or check if the video allows embedding.`);
+            break;
+          case 'current-time':
+            setCurrentTime(time);
+            if (onTimeUpdate) onTimeUpdate(time);
+            break;
+          case 'duration':
+            setDuration(dur);
+            if (onDurationChange) onDurationChange(dur);
+            break;
+          case 'time-update':
+            if (event.data.time !== undefined) {
+              setCurrentTime(event.data.time);
+              if (onTimeUpdate) onTimeUpdate(event.data.time);
+            }
+            if (event.data.duration !== undefined) {
+              setDuration(event.data.duration);
+              if (onDurationChange) onDurationChange(event.data.duration);
+            }
+            break;
         }
       };
-    }, []);
 
-    // Initialize player when API is ready and videoId is available
+      window.addEventListener('message', handleMessage);
+      return () => window.removeEventListener('message', handleMessage);
+    }, [onReady, onStateChange, onTimeUpdate, onDurationChange]);
+
+    // Load video when videoId changes
     useEffect(() => {
-      if (isAPIReady && videoId && playerElementRef.current) {
-        // Destroy existing player if it exists
-        if (playerRef.current) {
-          try {
-            playerRef.current.destroy();
-          } catch (e) {
-            console.log('Error destroying existing player:', e);
-          }
-        }
+      if (videoId && iframeRef.current) {
+        const iframe = iframeRef.current;
+        // Load video via GitHub Pages embed with video ID parameter
+        iframe.src = `${embedUrl}?v=${videoId}`;
 
-        playerRef.current = new window.YT.Player(playerElementRef.current, {
-          videoId: videoId,
-          host: 'https://www.youtube-nocookie.com',
-          playerVars: {
-            enablejsapi: 1,
-            controls: 1,
-            modestbranding: 1,
-            rel: 0,
-            autoplay: 0,
-            fs: 1,
-            disablekb: 0,
-            iv_load_policy: 3,
-            playsinline: 1,
-            origin: window.location.origin
-          },
-          events: {
-            onReady: (event: any) => {
-              console.log('YouTube player ready');
-              // Get duration when player is ready
-              try {
-                const duration = event.target.getDuration();
-                if (onDurationChange && duration > 0) {
-                  onDurationChange(duration);
-                }
-              } catch (e) {
-                console.log('Error getting duration:', e);
-              }
-              if (onReady) onReady();
-            },
-            onStateChange: (event: any) => {
-              console.log('Player state changed:', event.data);
-              if (onStateChange) onStateChange(event.data);
-            },
-            onError: (event: any) => {
-              console.error('YouTube Player Error:', event.data);
-              const errorMessages: { [key: number]: string } = {
-                2: 'Invalid video ID',
-                5: 'HTML5 player error',
-                100: 'Video not found or private',
-                101: 'Embedding not allowed by video owner',
-                150: 'Embedding not allowed by video owner',
-                151: 'Embedding not allowed by video owner',
-                153: 'Embedding not allowed by video owner'
-              };
-              const message = errorMessages[event.data] || `Unknown error: ${event.data}`;
-              alert(`YouTube Error ${event.data}: ${message}\n\nTry a different video or check if the video allows embedding.`);
-            },
-          },
-        });
-
-        // Set up time and volume update interval
-        const updateInterval = setInterval(() => {
-          if (playerRef.current) {
-            // Update time
-            if (playerRef.current.getCurrentTime) {
-              try {
-                const currentTime = playerRef.current.getCurrentTime();
-                if (onTimeUpdate && typeof currentTime === 'number') {
-                  onTimeUpdate(currentTime);
-                }
-              } catch (e) {
-                console.log('Error getting current time:', e);
-              }
-            }
-
-            // Update volume
-            if (playerRef.current.getVolume && onVolumeChangeRef.current) {
-              try {
-                const currentVolume = playerRef.current.getVolume();
-                if (typeof currentVolume === 'number') {
-                  onVolumeChangeRef.current(Math.round(currentVolume));
-                }
-              } catch (e) {
-                console.log('Error getting volume:', e);
-              }
-            }
-          }
+        // Also send load-video command after iframe loads
+        setTimeout(() => {
+          sendMessage({ type: 'load-video', data: { videoId } });
         }, 1000);
-
-        return () => {
-          clearInterval(updateInterval);
-        };
       }
-    }, [isAPIReady, videoId, onReady, onStateChange, onTimeUpdate, onDurationChange]);
+    }, [videoId, embedUrl]);
 
-    // Expose player methods to parent
+    // Set up time update interval
+    useEffect(() => {
+      if (!isReady) return;
+
+      const interval = setInterval(() => {
+        sendMessage({ type: 'get-time' });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }, [isReady]);
+
+    // Helper function to send messages to external iframe
+    const sendMessage = (message: any) => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(message, 'https://sco-tt.github.io');
+      }
+    };
+
+    // Expose player methods via ref
     useImperativeHandle(ref, () => ({
-      playVideo: () => {
-        if (playerRef.current && playerRef.current.playVideo) {
-          playerRef.current.playVideo();
-        }
+      playVideo: () => sendMessage({ type: 'play' }),
+      pauseVideo: () => sendMessage({ type: 'pause' }),
+      setPlaybackRate: (rate: number) => sendMessage({ type: 'set-speed', data: { rate } }),
+      getCurrentTime: () => currentTime,
+      seekTo: (seconds: number) => sendMessage({ type: 'seek', data: { time: seconds } }),
+      getPlayerState: () => -1, // Would need to track state from messages
+      getDuration: () => duration,
+      setVolume: (_volume: number) => {
+        // Volume control would need to be implemented in external player
+        console.log('Volume control not yet implemented in external player');
       },
-      pauseVideo: () => {
-        if (playerRef.current && playerRef.current.pauseVideo) {
-          playerRef.current.pauseVideo();
-        }
-      },
-      setPlaybackRate: (rate: number) => {
-        if (playerRef.current && playerRef.current.setPlaybackRate) {
-          playerRef.current.setPlaybackRate(rate);
-        }
-      },
-      getCurrentTime: () => {
-        if (playerRef.current && playerRef.current.getCurrentTime) {
-          return playerRef.current.getCurrentTime();
-        }
-        return 0;
-      },
-      seekTo: (seconds: number) => {
-        if (playerRef.current && playerRef.current.seekTo) {
-          playerRef.current.seekTo(seconds, true);
-        }
-      },
-      getPlayerState: () => {
-        if (playerRef.current && playerRef.current.getPlayerState) {
-          return playerRef.current.getPlayerState();
-        }
-        return -1;
-      },
-      getDuration: () => {
-        if (playerRef.current && playerRef.current.getDuration) {
-          return playerRef.current.getDuration();
-        }
-        return 0;
-      },
-      setVolume: (volume: number) => {
-        if (playerRef.current && playerRef.current.setVolume) {
-          playerRef.current.setVolume(volume);
-        }
-      },
-      getVolume: () => {
-        if (playerRef.current && playerRef.current.getVolume) {
-          return playerRef.current.getVolume();
-        }
-        return 100;
-      },
-    }));
+      getVolume: () => 50, // Default volume
+    }), [currentTime, duration]);
 
     return (
       <div className="youtube-player-container">
-        <div
-          ref={playerElementRef}
-          className="youtube-player"
-          style={{ width: '100%', height: '100%' }}
+        <iframe
+          ref={iframeRef}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            backgroundColor: '#000'
+          }}
+          allow="autoplay; encrypted-media"
+          title="YouTube Player Sidecar"
         />
-        {!isAPIReady && (
+        {!isReady && (
           <div className="loading">Loading YouTube Player...</div>
         )}
       </div>
