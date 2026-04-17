@@ -29,7 +29,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const [currentTime, setCurrentTime] = useState(0);
 
     // Use GitHub Pages for optimized YouTube embed
-    const embedUrl = "https://sco-tt.github.io/organize-tube/";
+    const embedUrl = "https://sco-tt.github.io/segment-studio/";
 
     // Message handler for communication with iframe
     useEffect(() => {

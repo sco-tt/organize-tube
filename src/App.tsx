@@ -11,7 +11,12 @@ import { useLoopControlsSQLite } from "./hooks/useLoopControlsSQLite";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useModal } from "./hooks/useModal";
 import { useSavedSongs } from "./hooks/useSavedSongs";
-import { extractVideoId } from "./utils/testYouTube";
+// Inline video ID extraction function
+function extractVideoId(url: string): string {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : '';
+}
 import "./App.css";
 
 function App() {
