@@ -290,4 +290,41 @@
     background: #4b5563;
     border-color: #6b7280;
   }
+
+  .custom-fields-section {
+    background: #374151;
+    border-color: #4b5563;
+  }
+
+  .custom-fields-title {
+    color: #f9fafb;
+    border-color: #4b5563;
+  }
+
+  .required {
+    color: #ef4444;
+  }
+}
+
+/* Custom Fields Styling */
+.custom-fields-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.custom-fields-title {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.required {
+  color: #dc2626;
+  margin-left: 2px;
 }

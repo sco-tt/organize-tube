@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal } from '../Modal/Modal';
 import { SongRoutine } from '../../repositories/songRoutineRepository';
+import { useCustomFields } from '../../hooks/useCustomFields';
+import { parseUserSongData, stringifyUserSongData, UserSongData } from '../../utils/userSongData';
 import './EditSongModal.css';
 
 interface EditSongModalProps {
@@ -11,7 +13,6 @@ interface EditSongModalProps {
 }
 
 export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalProps) {
-  const [name, setName] = useState('');
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [notes, setNotes] = useState('');
@@ -19,30 +20,54 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
   const [volume, setVolume] = useState(100);
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
+  const [customFieldValues, setCustomFieldValues] = useState<UserSongData>({});
   const tagInputRef = useRef<HTMLInputElement>(null);
+
+  const { fields: customFields, loading: customFieldsLoading } = useCustomFields();
 
   useEffect(() => {
     if (song) {
-      setName(song.name || '');
       setTitle(song.title || '');
       setArtist(song.artist || '');
       setNotes(song.notes || '');
-      setFreeformNotes(song.freeform_notes || '');
       setVolume(song.volume || 100);
       setTags([]); // TODO: Load tags from database
+
+      // Parse custom field values from freeform_notes
+      const parsedCustomFields = parseUserSongData(song.freeform_notes || '');
+      setCustomFieldValues(parsedCustomFields);
+
+      // Keep any non-JSON content in freeform_notes as fallback
+      try {
+        JSON.parse(song.freeform_notes || '{}');
+        setFreeformNotes(''); // Clear if it's valid JSON (will be shown as custom fields)
+      } catch {
+        setFreeformNotes(song.freeform_notes || ''); // Keep if it's not JSON
+      }
     }
   }, [song]);
 
   const handleSave = () => {
     if (!song) return;
 
+    // Convert custom field values back to JSON for freeform_notes
+    let finalFreeformNotes = freeformNotes.trim();
+    if (Object.keys(customFieldValues).length > 0) {
+      // Filter out empty values
+      const nonEmptyCustomFields = Object.fromEntries(
+        Object.entries(customFieldValues).filter(([_, value]) => value !== '' && value !== null && value !== undefined)
+      );
+      if (Object.keys(nonEmptyCustomFields).length > 0) {
+        finalFreeformNotes = stringifyUserSongData(nonEmptyCustomFields);
+      }
+    }
+
     const updatedSong: SongRoutine = {
       ...song,
-      name: name.trim(),
       title: title.trim(),
       artist: artist.trim(),
       notes: notes.trim(),
-      freeform_notes: freeformNotes.trim(),
+      freeform_notes: finalFreeformNotes,
       volume: volume
     };
 
@@ -65,17 +90,33 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
     setTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
 
+  const updateCustomField = (fieldName: string, value: string | number) => {
+    setCustomFieldValues(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+  };
+
   const handleClose = () => {
     onClose();
     // Reset form when closing
     if (song) {
-      setName(song.name || '');
       setTitle(song.title || '');
       setArtist(song.artist || '');
       setNotes(song.notes || '');
-      setFreeformNotes(song.freeform_notes || '');
       setVolume(song.volume || 100);
       setTags([]);
+
+      // Reset custom field values
+      const parsedCustomFields = parseUserSongData(song.freeform_notes || '');
+      setCustomFieldValues(parsedCustomFields);
+
+      try {
+        JSON.parse(song.freeform_notes || '{}');
+        setFreeformNotes('');
+      } catch {
+        setFreeformNotes(song.freeform_notes || '');
+      }
     }
     setNewTag('');
   };
@@ -90,19 +131,6 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
         </div>
 
         <div className="edit-song-content">
-          <div className="form-group">
-            <label htmlFor="song-name">Song Name *</label>
-            <input
-              id="song-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="form-input"
-              placeholder="Enter song name (required)"
-              required
-            />
-          </div>
-
           <div className="form-group">
             <label htmlFor="song-title">YouTube Title</label>
             <input
@@ -139,17 +167,94 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="song-freeform-notes">Additional Notes</label>
-            <textarea
-              id="song-freeform-notes"
-              value={freeformNotes}
-              onChange={(e) => setFreeformNotes(e.target.value)}
-              className="form-textarea"
-              placeholder="Any other notes or observations"
-              rows={2}
-            />
-          </div>
+          {/* Dynamic Custom Fields */}
+          {!customFieldsLoading && customFields.length > 0 && (
+            <div className="custom-fields-section">
+              <h3 className="custom-fields-title">Custom Fields</h3>
+              {customFields
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                .map((field) => {
+                  const fieldValue = customFieldValues[field.name] || field.default_value || '';
+
+                  return (
+                    <div key={field.id} className="form-group">
+                      <label htmlFor={`custom-field-${field.id}`}>
+                        {field.display_name}
+                        {field.is_required && <span className="required">*</span>}
+                      </label>
+
+                      {field.field_type === 'text' && (
+                        <input
+                          id={`custom-field-${field.id}`}
+                          type="text"
+                          value={String(fieldValue)}
+                          onChange={(e) => updateCustomField(field.name, e.target.value)}
+                          className="form-input"
+                          placeholder={`Enter ${field.display_name.toLowerCase()}`}
+                          required={field.is_required}
+                        />
+                      )}
+
+                      {field.field_type === 'number' && (
+                        <input
+                          id={`custom-field-${field.id}`}
+                          type="number"
+                          value={String(fieldValue)}
+                          onChange={(e) => updateCustomField(field.name, e.target.value ? Number(e.target.value) : '')}
+                          className="form-input"
+                          placeholder={`Enter ${field.display_name.toLowerCase()}`}
+                          required={field.is_required}
+                        />
+                      )}
+
+                      {field.field_type === 'select' && field.field_options && (
+                        <select
+                          id={`custom-field-${field.id}`}
+                          value={String(fieldValue)}
+                          onChange={(e) => updateCustomField(field.name, e.target.value)}
+                          className="form-input"
+                          required={field.is_required}
+                        >
+                          <option value="">Choose {field.display_name.toLowerCase()}</option>
+                          {field.field_options.split(',').map((option) => (
+                            <option key={option.trim()} value={option.trim()}>
+                              {option.trim()}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      {field.field_type === 'textarea' && (
+                        <textarea
+                          id={`custom-field-${field.id}`}
+                          value={String(fieldValue)}
+                          onChange={(e) => updateCustomField(field.name, e.target.value)}
+                          className="form-textarea"
+                          placeholder={`Enter ${field.display_name.toLowerCase()}`}
+                          rows={3}
+                          required={field.is_required}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+
+          {/* Fallback for non-JSON freeform notes */}
+          {freeformNotes && (
+            <div className="form-group">
+              <label htmlFor="song-freeform-notes">Additional Notes</label>
+              <textarea
+                id="song-freeform-notes"
+                value={freeformNotes}
+                onChange={(e) => setFreeformNotes(e.target.value)}
+                className="form-textarea"
+                placeholder="Any other notes or observations"
+                rows={2}
+              />
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="song-volume">Volume ({volume}%)</label>
@@ -236,7 +341,6 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
           <button
             onClick={handleSave}
             className="btn btn-primary"
-            disabled={!title.trim() || !artist.trim()}
           >
             Save Changes
           </button>

@@ -7,7 +7,6 @@ export interface SongRoutine {
   title: string;
   artist: string;
   duration: number;
-  name: string;
   notes: string;
   freeform_notes: string;
   volume: number;
@@ -22,7 +21,6 @@ export interface CreateSongRoutine {
   title?: string;
   artist?: string;
   duration?: number;
-  name: string;
   notes?: string;
   freeform_notes?: string;
   volume?: number;
@@ -51,7 +49,6 @@ export class SongRoutineRepository {
       routine.title || '',
       routine.artist || '',
       routine.duration || 0,
-      routine.name,
       routine.notes || '',
       routine.freeform_notes || '',
       routine.volume || 100,
@@ -65,8 +62,8 @@ export class SongRoutineRepository {
       console.log('SongRoutineRepository: Executing SQL query...');
       await databaseService.executeNonQuery(
         `INSERT INTO song_routines
-         (id, url, url_source, title, artist, duration, name, notes, freeform_notes, volume, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, url, url_source, title, artist, duration, notes, freeform_notes, volume, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params
       );
 
@@ -95,11 +92,19 @@ export class SongRoutineRepository {
   }
 
   async findByUrl(url: string): Promise<SongRoutine | null> {
-    const results = await databaseService.executeQuery<SongRoutine>(
-      `SELECT * FROM song_routines WHERE url = ? LIMIT 1`,
-      [url]
-    );
-    return results[0] || null;
+    console.log('SongRoutineRepository.findByUrl: Starting search for URL:', url);
+    try {
+      console.log('SongRoutineRepository.findByUrl: Executing SQL query...');
+      const results = await databaseService.executeQuery<SongRoutine>(
+        `SELECT * FROM song_routines WHERE url = ? LIMIT 1`,
+        [url]
+      );
+      console.log('SongRoutineRepository.findByUrl: Query completed, results:', results);
+      return results[0] || null;
+    } catch (error) {
+      console.error('SongRoutineRepository.findByUrl: Error during query:', error);
+      throw error;
+    }
   }
 
   async update(id: string, updates: Partial<SongRoutine>): Promise<void> {
@@ -127,10 +132,17 @@ export class SongRoutineRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await databaseService.executeNonQuery(
-      `DELETE FROM song_routines WHERE id = ?`,
-      [id]
-    );
+    console.log('SongRoutineRepository.delete: Starting delete for ID:', id);
+    try {
+      const result = await databaseService.executeNonQuery(
+        `DELETE FROM song_routines WHERE id = ?`,
+        [id]
+      );
+      console.log('SongRoutineRepository.delete: Delete completed, rows affected:', result);
+    } catch (error) {
+      console.error('SongRoutineRepository.delete: Error during delete:', error);
+      throw error;
+    }
   }
 
   async updateLastPracticed(id: string): Promise<void> {
@@ -149,11 +161,14 @@ export class SongRoutineRepository {
   }
 
   async createTag(name: string, color: string = '#007bff'): Promise<number> {
-    const result = await databaseService.executeQuery<{ id: number }>(
-      `INSERT INTO tags (name, color) VALUES (?, ?) RETURNING id`,
+    await databaseService.executeNonQuery(
+      `INSERT INTO tags (name, color) VALUES (?, ?)`,
       [name, color]
     );
-    return result[0].id;
+    const result = await databaseService.executeQuery<{ 'last_insert_rowid()': number }>(
+      `SELECT last_insert_rowid()`
+    );
+    return result[0]['last_insert_rowid()'];
   }
 
   async getRoutineTags(routineId: string): Promise<Tag[]> {

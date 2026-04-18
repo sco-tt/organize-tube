@@ -6,11 +6,14 @@ import { InstructionsModal } from "./components/InstructionsModal/InstructionsMo
 import { SpeedControlModal } from "./components/SpeedControlModal/SpeedControlModal";
 import { LoadVideoModal } from "./components/LoadVideoModal/LoadVideoModal";
 import { MySongsModal } from "./components/MySongsModal/MySongsModal";
+import { CustomFieldsModal } from "./components/CustomFieldsModal/CustomFieldsModal";
+import { SongInfoPanel } from "./components/SongInfoPanel/SongInfoPanel";
 import { Toast } from "./components/Toast/Toast";
 import { useLoopControlsSQLite } from "./hooks/useLoopControlsSQLite";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useModal } from "./hooks/useModal";
 import { useSavedSongs } from "./hooks/useSavedSongs";
+import { SongRoutine } from "./repositories/songRoutineRepository";
 // Inline video ID extraction function
 function extractVideoId(url: string): string {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -31,6 +34,7 @@ function App() {
   const speedModal = useModal();
   const loadVideoModal = useModal();
   const mySongsModal = useModal();
+  const customFieldsModal = useModal();
 
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -38,13 +42,16 @@ function App() {
   const [songTags, setSongTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [volume, setVolume] = useState(100);
+  const [currentSong, setCurrentSong] = useState<SongRoutine | null>(null);
 
   const playerRef = useRef<YouTubePlayerHandle>(null);
 
   // Saved songs
   const {
     saveSong,
-    checkUrlExists
+    checkUrlExists,
+    updateSong,
+    findSongById
   } = useSavedSongs();
 
   // Loop controls
@@ -61,9 +68,12 @@ function App() {
     selectLoop,
     toggleLooping,
     clearLoops,
+    clearLoopsDisplay,
     clearTempPoints,
     changeTempStart,
-    changeTempEnd
+    changeTempEnd,
+    loadSegmentsForRoutine,
+    loadStandaloneSegments
   } = useLoopControlsSQLite({ playerRef, isPlaying });
 
 
@@ -185,10 +195,11 @@ function App() {
     setVideoId(videoId);
     setVideoUrl(videoUrl);
     setCurrentSpeed(1.0); // Reset speed when loading new video
-    clearLoops(); // Clear any temporary loops
+    clearLoopsDisplay(); // Clear any displayed loops but keep saved segments
     setSongTags([]); // Clear tags for new video
     setVolume(100); // Reset volume for new video
-  }, [clearLoops]);
+    setCurrentSong(null); // Clear current song when loading new video
+  }, [clearLoopsDisplay]);
 
   const addTag = useCallback(() => {
     const tag = newTag.trim();
@@ -288,25 +299,72 @@ function App() {
     }
   }, [videoId, videoUrl, duration, loops, songTags, showToastNotification, fetchVideoTitle, saveSong, checkUrlExists]);
 
-  const handleSongSelect = useCallback((_songId: string, songUrl: string) => {
+  const handleSongSelect = useCallback(async (songId: string, songUrl: string) => {
+    console.log('handleSongSelect: Called with songId:', songId, 'songUrl:', songUrl);
     const id = extractVideoId(songUrl);
+    console.log('handleSongSelect: Extracted video ID:', id);
+
     if (id) {
+      console.log('handleSongSelect: Loading video with ID:', id);
       setVideoId(id);
       setVideoUrl(songUrl);
       setCurrentSpeed(1.0);
-      clearLoops();
 
-      // TODO: Load saved song data from SQLite using songId
-      // For now, just reset to defaults
-      setSongTags([]);
-      setVolume(100);
+      // Load segments for this specific song
+      loadSegmentsForRoutine(songId);
 
-      // TODO: Load segments for this song
+      // Load the full song data
+      try {
+        const songData = await findSongById(songId);
+        setCurrentSong(songData);
+
+        // Set volume from song data
+        if (songData?.volume) {
+          setVolume(songData.volume);
+        }
+      } catch (error) {
+        console.error('Failed to load song data:', error);
+      }
+
       // TODO: Load tags for this song
+      setSongTags([]);
 
       showToastNotification('Song loaded successfully! 🎵');
+    } else {
+      console.error('handleSongSelect: Could not extract video ID from URL:', songUrl);
+      showToastNotification(`Invalid YouTube URL: "${songUrl}". Please edit the song and add a valid YouTube URL.`);
     }
-  }, [clearLoops, showToastNotification]);
+  }, [loadSegmentsForRoutine, showToastNotification, findSongById]);
+
+  const handleSongUpdate = useCallback(async (updatedSong: SongRoutine) => {
+    try {
+      if (!currentSong) return;
+
+      // Calculate what changed
+      const updates: Partial<SongRoutine> = {};
+      if (updatedSong.title !== currentSong.title) updates.title = updatedSong.title;
+      if (updatedSong.artist !== currentSong.artist) updates.artist = updatedSong.artist;
+      if (updatedSong.notes !== currentSong.notes) updates.notes = updatedSong.notes;
+      if (updatedSong.volume !== currentSong.volume) updates.volume = updatedSong.volume;
+      if (updatedSong.freeform_notes !== currentSong.freeform_notes) updates.freeform_notes = updatedSong.freeform_notes;
+
+      if (Object.keys(updates).length > 0) {
+        await updateSong(currentSong.id, updates);
+        setCurrentSong(updatedSong);
+
+        // Update volume in player if it changed
+        if (updatedSong.volume !== volume) {
+          setVolume(updatedSong.volume);
+          changeVolume(updatedSong.volume);
+        }
+
+        showToastNotification('Song updated successfully! ✅');
+      }
+    } catch (error) {
+      console.error('Failed to update song:', error);
+      showToastNotification('Failed to update song');
+    }
+  }, [updateSong, currentSong, volume, changeVolume, showToastNotification]);
 
 
   return (
@@ -325,7 +383,6 @@ function App() {
           </div>
 
           <div className="video-section">
-            <div className="video-and-controls">
               <div className="controls-sidebar">
                 <div className="playback-row">
                   <span>Current Time:<br/>{videoId ? formatTime(currentTime) : '--:--'}</span>
@@ -360,6 +417,11 @@ function App() {
                   <span className={isLooping && activeLoop ? "loop-status" : "full-song-status"}>
                     {!videoId ? "🎵 No video loaded" : isLooping && activeLoop ? `🔁 Looping: ${activeLoop.name}` : "🎵 Playing full song"}
                   </span>
+                  {videoId && (
+                    <span className="saved-status">
+                      {currentSong ? "💾 Saved" : "❌ Unsaved"}
+                    </span>
+                  )}
                 </div>
 
                 <div className="speed-controls">
@@ -436,6 +498,27 @@ function App() {
                   >
                     📂 My Songs
                   </button>
+
+                  <button
+                    className="custom-fields-link"
+                    onClick={customFieldsModal.open}
+                    type="button"
+                    title="Manage custom fields"
+                    style={{
+                      background: 'transparent',
+                      color: '#059669',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      fontWeight: '500',
+                      border: '1px solid #059669',
+                      borderRadius: '4px',
+                      width: '100%',
+                      marginTop: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🎛️ Custom Fields
+                  </button>
                 </div>
 
                 <div className="tags-section">
@@ -507,7 +590,8 @@ function App() {
                 </div>
               </div>
 
-              <div className="video-container">
+              <div className="video-area">
+                <div className="video-container">
                 {videoId ? (
                   <YouTubePlayer
                     ref={playerRef}
@@ -541,24 +625,30 @@ function App() {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
+                </div>
 
-            {/* Progress Bar with Loop Visualization */}
-            {videoId ? (
-              <LoopProgressBar
-                currentTime={currentTime}
-                duration={duration}
-                activeLoop={activeLoop}
-                onSeekToTime={handleSeekToTime}
-                onSetLoopStart={setLoopStart}
-                onSetLoopEnd={setLoopEnd}
-              />
-            ) : (
-              <div className="progress-placeholder">
-                <span>🎼 Progress bar will appear when video is loaded</span>
+                {/* Song Information Panel - underneath video */}
+                <SongInfoPanel
+                  song={currentSong}
+                  onSongUpdate={handleSongUpdate}
+                />
+
+                {/* Progress Bar with Loop Visualization */}
+                {videoId ? (
+                  <LoopProgressBar
+                    currentTime={currentTime}
+                    duration={duration}
+                    activeLoop={activeLoop}
+                    onSeekToTime={handleSeekToTime}
+                    onSetLoopStart={setLoopStart}
+                    onSetLoopEnd={setLoopEnd}
+                  />
+                ) : (
+                  <div className="progress-placeholder">
+                    <span>🎼 Progress bar will appear when video is loaded</span>
+                  </div>
+                )}
               </div>
-            )}
           </div>
         </main>
 
@@ -607,6 +697,11 @@ function App() {
         isOpen={mySongsModal.isOpen}
         onClose={mySongsModal.close}
         onSongSelect={handleSongSelect}
+      />
+
+      <CustomFieldsModal
+        isOpen={customFieldsModal.isOpen}
+        onClose={customFieldsModal.close}
       />
 
       <Toast

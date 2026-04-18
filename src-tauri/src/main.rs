@@ -14,12 +14,20 @@ fn main() {
             tauri_plugin_sql::Builder::new()
                 .add_migrations(
                     "sqlite:segment_studio.db",
-                    vec![tauri_plugin_sql::Migration {
-                        version: 1,
-                        description: "create_initial_tables",
-                        sql: include_str!("../migrations/001_initial.sql"),
-                        kind: tauri_plugin_sql::MigrationKind::Up,
-                    }],
+                    vec![
+                        tauri_plugin_sql::Migration {
+                            version: 1,
+                            description: "create_initial_tables",
+                            sql: include_str!("../migrations/001_initial.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
+                        tauri_plugin_sql::Migration {
+                            version: 2,
+                            description: "custom_field_definitions",
+                            sql: include_str!("../migrations/002_custom_field_definitions.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
+                    ],
                 )
                 .build(),
         )
