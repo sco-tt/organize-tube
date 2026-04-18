@@ -25,6 +25,11 @@ export function useSavedSongs() {
   }, []);
 
   const saveSong = useCallback(async (songData: CreateSongRoutine) => {
+    const saveTimeout = setTimeout(() => {
+      console.error('useSavedSongs: Save operation timed out after 10 seconds');
+      setError('Save operation timed out. Please try again.');
+    }, 10000);
+
     try {
       console.log('useSavedSongs: Starting song save with data:', songData);
       setError(null);
@@ -37,8 +42,10 @@ export function useSavedSongs() {
       await loadSongs(); // Refresh the list
       console.log('useSavedSongs: Save completed successfully');
 
+      clearTimeout(saveTimeout);
       return id;
     } catch (err) {
+      clearTimeout(saveTimeout);
       console.error('useSavedSongs: Error saving song - full error:', err);
       console.error('useSavedSongs: Error type:', typeof err);
       console.error('useSavedSongs: Error toString:', err?.toString());
@@ -65,12 +72,16 @@ export function useSavedSongs() {
 
   const deleteSong = useCallback(async (id: string) => {
     try {
+      console.log('useSavedSongs.deleteSong: Starting delete for ID:', id);
       setError(null);
+      console.log('useSavedSongs.deleteSong: Calling repository delete...');
       await songRoutineRepo.delete(id);
+      console.log('useSavedSongs.deleteSong: Delete successful, refreshing list...');
       await loadSongs(); // Refresh the list
+      console.log('useSavedSongs.deleteSong: Delete completed successfully');
     } catch (err) {
+      console.error('useSavedSongs.deleteSong: Error deleting song:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete song');
-      console.error('Error deleting song:', err);
       throw err;
     }
   }, [loadSongs]);
@@ -103,14 +114,38 @@ export function useSavedSongs() {
   }, [loadSongs]);
 
   const checkUrlExists = useCallback(async (url: string): Promise<boolean> => {
+    const checkTimeout = setTimeout(() => {
+      console.error('checkUrlExists: URL check timed out after 5 seconds');
+    }, 5000);
+
     try {
+      console.log('checkUrlExists: Starting URL check for:', url);
+      console.log('checkUrlExists: Ensuring database is initialized...');
+      await databaseService.initialize();
+      console.log('checkUrlExists: Database initialized, calling findByUrl...');
       const existing = await songRoutineRepo.findByUrl(url);
+      console.log('checkUrlExists: findByUrl completed, result:', existing);
+      clearTimeout(checkTimeout);
       return !!existing;
     } catch (err) {
-      console.error('Error checking URL:', err);
+      clearTimeout(checkTimeout);
+      console.error('checkUrlExists: Error checking URL:', err);
       return false;
     }
   }, []);
+
+  const findSongById = useCallback(async (id: string): Promise<SongRoutine | null> => {
+    try {
+      return await songRoutineRepo.findById(id);
+    } catch (err) {
+      console.error('Error finding song by ID:', err);
+      return null;
+    }
+  }, []);
+
+  const refreshSongs = useCallback(async () => {
+    await loadSongs();
+  }, [loadSongs]);
 
   useEffect(() => {
     loadSongs();
@@ -126,6 +161,7 @@ export function useSavedSongs() {
     searchSongs,
     markPracticed,
     checkUrlExists,
-    refreshSongs: loadSongs,
+    findSongById,
+    refreshSongs,
   };
 }

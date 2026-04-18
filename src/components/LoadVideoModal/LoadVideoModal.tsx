@@ -61,9 +61,11 @@ export function LoadVideoModal({
   };
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    // Store the target reference before setTimeout
+    const target = e.currentTarget;
     // Allow default paste behavior
     setTimeout(() => {
-      const pastedText = e.currentTarget.value;
+      const pastedText = target.value;
       if (pastedText && validateYouTubeUrl(pastedText)) {
         // Auto-extract and load if it's a valid YouTube URL
         const id = extractVideoId(pastedText);

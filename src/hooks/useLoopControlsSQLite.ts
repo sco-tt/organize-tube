@@ -17,13 +17,12 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
   const lastSeekTimeRef = useRef<number>(0);
   const seekCooldownRef = useRef<boolean>(false);
 
-  // Initialize database and load standalone segments
+  // Initialize database but don't load any segments by default
   useEffect(() => {
-    const initializeAndLoad = async () => {
+    const initialize = async () => {
       try {
         setLoading(true);
         await databaseService.initialize();
-        await loadStandaloneSegments();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to initialize');
       } finally {
@@ -31,7 +30,7 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
       }
     };
 
-    initializeAndLoad();
+    initialize();
   }, []);
 
   const loadStandaloneSegments = useCallback(async () => {
@@ -225,6 +224,14 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
     }
   }, []);
 
+  const clearLoopsDisplay = useCallback(() => {
+    setLoops([]);
+    setActiveLoop(null);
+    setIsLooping(false);
+    setTempStart(null);
+    setTempEnd(null);
+  }, []);
+
   const clearTempPoints = useCallback(() => {
     setTempStart(null);
     setTempEnd(null);
@@ -271,6 +278,7 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
     selectLoop,
     toggleLooping,
     clearLoops,
+    clearLoopsDisplay,
     clearTempPoints,
     changeTempStart,
     changeTempEnd,

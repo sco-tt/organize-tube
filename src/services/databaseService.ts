@@ -9,7 +9,7 @@ class DatabaseService {
 
     try {
       this.db = await Database.load('sqlite:segment_studio.db');
-      await this.createTables();
+      // Tables are created via Tauri migrations, not here
       this.initialized = true;
       console.log('Database initialized successfully');
     } catch (error) {
@@ -56,20 +56,20 @@ class DatabaseService {
     // Create tags table
     await this.executeNonQuery(`
       CREATE TABLE IF NOT EXISTS tags (
-        id TEXT PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
         color TEXT DEFAULT '#3b82f6',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Create routine_tags junction table
+    // Create song_routine_tags junction table
     await this.executeNonQuery(`
-      CREATE TABLE IF NOT EXISTS routine_tags (
-        routine_id TEXT,
-        tag_id TEXT,
-        PRIMARY KEY (routine_id, tag_id),
-        FOREIGN KEY (routine_id) REFERENCES song_routines(id) ON DELETE CASCADE,
+      CREATE TABLE IF NOT EXISTS song_routine_tags (
+        song_routine_id TEXT,
+        tag_id INTEGER,
+        PRIMARY KEY (song_routine_id, tag_id),
+        FOREIGN KEY (song_routine_id) REFERENCES song_routines(id) ON DELETE CASCADE,
         FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
       )
     `);
@@ -82,7 +82,7 @@ class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_loop_segments_routine ON loop_segments(song_routine_id)
     `);
     await this.executeNonQuery(`
-      CREATE INDEX IF NOT EXISTS idx_routine_tags_routine ON routine_tags(routine_id)
+      CREATE INDEX IF NOT EXISTS idx_song_routine_tags_routine ON song_routine_tags(song_routine_id)
     `);
 
     console.log('Database tables created successfully');

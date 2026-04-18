@@ -1381,3 +1381,92 @@ const handleYouTubeError = (error: number) => {
 ---
 
 This approach provides a clear path from current MVP to commercial-scale deployment while maintaining high performance and legal compliance.
+
+---
+
+## UI Layout Structure (Current Implementation)
+
+### Main Application Layout
+
+The application uses a three-area layout design optimized for music practice workflows:
+
+```
+┌─────────────────┬─────────────────────────────────┐
+│ Controls        │ Video Area                      │
+│ Sidebar         │ ┌─────────────────────────────┐ │
+│ (200px fixed)   │ │ YouTube Video Player        │ │
+│                 │ └─────────────────────────────┘ │
+│ - Practice Speed│ ┌─────────────────────────────┐ │
+│ - Save Song     │ │ Song Information Panel      │ │
+│ - My Songs      │ │ - Title, Artist, Volume     │ │
+│ - Custom Fields │ │ - Practice Notes            │ │
+│ - Tags          │ │ - Custom Fields (Key, etc.) │ │
+│ - Help          │ │ - Edit Mode                 │ │
+│                 │ └─────────────────────────────┘ │
+└─────────────────┴─────────────────────────────────┘
+```
+
+### CSS Structure
+
+```css
+.main-content {
+  display: flex;              /* Side-by-side layout */
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.controls-sidebar {
+  width: 200px;               /* Fixed width left column */
+  flex-shrink: 0;
+  /* Contains: speed controls, save/load, tags */
+}
+
+.video-area {
+  display: flex;              /* Vertical stack for video + song info */
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;                    /* Flexible width right column */
+  min-width: 0;
+}
+```
+
+### Component Hierarchy
+
+```
+App
+├── main-content
+│   ├── controls-sidebar
+│   │   ├── Practice Speed Controls
+│   │   ├── Save Song Button
+│   │   ├── My Songs Button  
+│   │   ├── Custom Fields Button
+│   │   ├── Tags Section
+│   │   └── Help & Shortcuts
+│   └── video-area
+│       ├── video-container
+│       │   └── YouTubePlayer iframe
+│       └── SongInfoPanel
+│           ├── Display Mode (song metadata)
+│           └── Edit Mode (form fields)
+└── sidebar (right edge)
+    └── SidebarTabs (Segments/Loops)
+```
+
+### Design Principles
+
+**Musician-Focused Layout:**
+- **Left Controls**: Quick access to essential practice tools (speed, save, load)
+- **Center Video**: Primary focus for visual learning  
+- **Below Video**: Song metadata and practice notes
+- **Right Sidebar**: Advanced features (segments, loops)
+
+**Responsive Design:**
+- Fixed 200px left sidebar for consistent control access
+- Flexible center area adapts to window size
+- Right sidebar collapses on smaller screens (future enhancement)
+
+**Context-Aware Information:**
+- Song Information Panel only appears when a saved song is loaded
+- Empty state shows welcome message and instructions
+- Progressive disclosure of advanced features

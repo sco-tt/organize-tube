@@ -447,3 +447,376 @@
     text-align: center;
   }
 }
+
+/* Header Analysis Modal */
+.header-analysis-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.header-analysis-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.header-analysis-modal h3 {
+  margin: 0 0 20px 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.header-analysis-modal h4 {
+  margin: 16px 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.mapping-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.csv-header {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-weight: 500;
+}
+
+.arrow {
+  color: #6b7280;
+  font-weight: bold;
+}
+
+.song-field {
+  background: #dcfce7;
+  color: #166534;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.confidence {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-left: auto;
+}
+
+.unmapped-columns {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.unmapped-header {
+  display: inline-block;
+  background: #fef3c7;
+  color: #d97706;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  margin: 2px 4px;
+  font-size: 0.875rem;
+}
+
+.preview-summary {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.preview-summary p {
+  margin: 4px 0;
+}
+
+.analysis-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.cancel-btn {
+  padding: 8px 16px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+.import-btn.primary {
+  padding: 8px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.import-btn.primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.import-btn.primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.mappings-hint {
+  margin: 8px 0 16px 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.mapping-item.rejected {
+  opacity: 0.6;
+  background: #fef2f2;
+  border-radius: 6px;
+  margin: 4px 0;
+  padding: 8px 12px;
+}
+
+.mapping-item.rejected .csv-header,
+.mapping-item.rejected .song-field {
+  opacity: 0.7;
+}
+
+.mapping-item.rejected .arrow {
+  color: #ef4444;
+}
+
+.mapping-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.mapping-checkbox input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.mapping-checkbox input[type="checkbox"]:checked + .checkmark {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.mapping-checkbox input[type="checkbox"]:checked + .checkmark::after {
+  content: "✓";
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.mapping-checkbox:hover .checkmark {
+  border-color: #3b82f6;
+}
+
+.unmapped-column-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.unmapped-column-item:last-child {
+  border-bottom: none;
+}
+
+.unmapped-action-select {
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.875rem;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.unmapped-action-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.unmapped-action-select option {
+  padding: 4px 8px;
+}
+
+.unmapped-header {
+  display: inline-block;
+  background: #fef3c7;
+  color: #d97706;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.875rem;
+  min-width: 120px;
+}
+
+.new-field-input {
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  width: 150px;
+  margin-left: 8px;
+}
+
+.new-field-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.new-field-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Delete Confirmation Modal */
+.delete-confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+}
+
+.delete-confirmation-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.delete-confirmation-modal h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.delete-confirmation-modal p {
+  margin: 8px 0;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.delete-confirmation-modal .warning {
+  color: #dc2626;
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-top: 16px;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.delete-confirm-btn {
+  padding: 10px 20px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.delete-confirm-btn:hover {
+  background: #b91c1c;
+}
+
+.confirmation-actions .cancel-btn {
+  padding: 10px 20px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.confirmation-actions .cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+/* YouTube Fetch Option */
+.youtube-fetch-option {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.youtube-fetch-option .checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.youtube-fetch-option .option-description {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+  margin-left: 24px;
+  font-style: italic;
+}
