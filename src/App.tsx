@@ -195,7 +195,7 @@ function App() {
     setVideoId(videoId);
     setVideoUrl(videoUrl);
     setCurrentSpeed(1.0); // Reset speed when loading new video
-    clearLoopsDisplay(); // Clear any displayed loops but keep saved segments
+    clearLoopsDisplay(); // Clear any displayed loops and stop looping
     setSongTags([]); // Clear tags for new video
     setVolume(100); // Reset volume for new video
     setCurrentSong(null); // Clear current song when loading new video
@@ -310,6 +310,9 @@ function App() {
       setVideoUrl(songUrl);
       setCurrentSpeed(1.0);
 
+      // Clear any active loops and loop state when switching songs
+      clearLoopsDisplay();
+
       // Load segments for this specific song
       loadSegmentsForRoutine(songId);
 
@@ -334,7 +337,7 @@ function App() {
       console.error('handleSongSelect: Could not extract video ID from URL:', songUrl);
       showToastNotification(`Invalid YouTube URL: "${songUrl}". Please edit the song and add a valid YouTube URL.`);
     }
-  }, [loadSegmentsForRoutine, showToastNotification, findSongById]);
+  }, [clearLoopsDisplay, loadSegmentsForRoutine, showToastNotification, findSongById]);
 
   const handleSongUpdate = useCallback(async (updatedSong: SongRoutine) => {
     try {
