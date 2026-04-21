@@ -7,12 +7,15 @@ import { SpeedControlModal } from "./components/SpeedControlModal/SpeedControlMo
 import { LoadVideoModal } from "./components/LoadVideoModal/LoadVideoModal";
 import { MySongsModal } from "./components/MySongsModal/MySongsModal";
 import { CustomFieldsModal } from "./components/CustomFieldsModal/CustomFieldsModal";
+import { ToolsModal } from "./components/ToolsModal/ToolsModal";
 import { SongInfoPanel } from "./components/SongInfoPanel/SongInfoPanel";
 import { Toast } from "./components/Toast/Toast";
 import { useLoopControlsSQLite } from "./hooks/useLoopControlsSQLite";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useModal } from "./hooks/useModal";
 import { useSavedSongs } from "./hooks/useSavedSongs";
+import { TagAutocomplete } from "./components/TagAutocomplete/TagAutocomplete";
+import { TagsService } from "./services/tagsService";
 import { SongRoutine } from "./repositories/songRoutineRepository";
 // Inline video ID extraction function
 function extractVideoId(url: string): string {
@@ -35,6 +38,7 @@ function App() {
   const loadVideoModal = useModal();
   const mySongsModal = useModal();
   const customFieldsModal = useModal();
+  const toolsModal = useModal();
 
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -45,6 +49,23 @@ function App() {
   const [currentSong, setCurrentSong] = useState<SongRoutine | null>(null);
 
   const playerRef = useRef<YouTubePlayerHandle>(null);
+
+  // Get volume settings from localStorage
+  const getVolumeSettings = useCallback((): { defaultVolume: number; onlyForNewVideos: boolean } => {
+    try {
+      const savedSettings = localStorage.getItem('segment-studio-settings');
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        return {
+          defaultVolume: settings.defaultVolume || 100,
+          onlyForNewVideos: settings.defaultVolumeOnlyForNewVideos || false
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to read volume settings:', error);
+    }
+    return { defaultVolume: 100, onlyForNewVideos: false };
+  }, []);
 
   // Saved songs
   const {
@@ -197,17 +218,28 @@ function App() {
     setCurrentSpeed(1.0); // Reset speed when loading new video
     clearLoopsDisplay(); // Clear any displayed loops and stop looping
     setSongTags([]); // Clear tags for new video
-    setVolume(100); // Reset volume for new video
+    const { defaultVolume } = getVolumeSettings();
+    setVolume(defaultVolume); // Use default volume from settings
     setCurrentSong(null); // Clear current song when loading new video
-  }, [clearLoopsDisplay]);
+  }, [clearLoopsDisplay, getVolumeSettings]);
 
-  const addTag = useCallback(() => {
+  const addTag = useCallback((tag: string) => {
+    const trimmedTag = tag.trim();
+    if (trimmedTag && !songTags.includes(trimmedTag)) {
+      setSongTags(prev => [...prev, trimmedTag]);
+
+      // Add to tags service cache for immediate availability
+      TagsService.getInstance().addToCache([trimmedTag]);
+    }
+  }, [songTags]);
+
+  const addTagFromInput = useCallback(() => {
     const tag = newTag.trim();
     if (tag && !songTags.includes(tag)) {
-      setSongTags(prev => [...prev, tag]);
+      addTag(tag);
       setNewTag('');
     }
-  }, [newTag, songTags]);
+  }, [newTag, songTags, addTag]);
 
   const removeTag = useCallback((tagToRemove: string) => {
     setSongTags(prev => prev.filter(tag => tag !== tagToRemove));
@@ -268,12 +300,38 @@ function App() {
       };
 
       console.log('Attempting to save song data:', songData);
-      await saveSong(songData);
+      const savedSongId = await saveSong(songData);
+
+      // Update currentSong state to reflect that this video is now saved
+      if (savedSongId) {
+        const newSong: SongRoutine = {
+          id: savedSongId,
+          name: songData.name,
+          title: songData.title,
+          artist: songData.artist,
+          url: songData.url,
+          url_source: 'youtube',
+          duration: songData.duration,
+          notes: songData.notes,
+          freeform_notes: songData.freeform_notes,
+          volume: songData.volume,
+          created_at: new Date().toISOString(),
+          last_practiced: undefined,
+          tags_json: JSON.stringify(songTags),
+          loops_json: '[]',
+          steps_json: '[]',
+          links_json: '[]'
+        };
+        setCurrentSong(newSong);
+      }
 
       // Save any standalone segments as segments for this song
       if (loops.length > 0) {
         // TODO: Save loops as segments for this song
       }
+
+      // Clear tags cache to ensure fresh autocomplete data
+      TagsService.getInstance().clearCache();
 
       showToastNotification(`"${videoTitle || 'Song'}" saved successfully! 💾`);
       setIsSavingSong(false);
@@ -310,21 +368,23 @@ function App() {
       setVideoUrl(songUrl);
       setCurrentSpeed(1.0);
 
-      // Clear any active loops and loop state when switching songs
-      clearLoopsDisplay();
+      // Stop any active looping when switching songs
+      if (isLooping) {
+        toggleLooping();
+      }
 
-      // Load segments for this specific song
-      loadSegmentsForRoutine(songId);
+      // Load segments for this specific song (this will replace any existing segments)
+      await loadSegmentsForRoutine(songId);
 
       // Load the full song data
       try {
         const songData = await findSongById(songId);
         setCurrentSong(songData);
 
-        // Set volume from song data
-        if (songData?.volume) {
-          setVolume(songData.volume);
-        }
+        // Set volume based on settings
+        const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
+        const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
+        setVolume(volumeToUse);
       } catch (error) {
         console.error('Failed to load song data:', error);
       }
@@ -337,7 +397,7 @@ function App() {
       console.error('handleSongSelect: Could not extract video ID from URL:', songUrl);
       showToastNotification(`Invalid YouTube URL: "${songUrl}". Please edit the song and add a valid YouTube URL.`);
     }
-  }, [clearLoopsDisplay, loadSegmentsForRoutine, showToastNotification, findSongById]);
+  }, [isLooping, toggleLooping, loadSegmentsForRoutine, showToastNotification, findSongById, getVolumeSettings]);
 
   const handleSongUpdate = useCallback(async (updatedSong: SongRoutine) => {
     try {
@@ -522,6 +582,27 @@ function App() {
                   >
                     🎛️ Custom Fields
                   </button>
+
+                  <button
+                    className="tools-link"
+                    onClick={toolsModal.open}
+                    type="button"
+                    title="Music practice tools"
+                    style={{
+                      background: 'transparent',
+                      color: '#6f42c1',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      fontWeight: '500',
+                      border: '1px solid #6f42c1',
+                      borderRadius: '4px',
+                      width: '100%',
+                      marginTop: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🎯 Practice Tools
+                  </button>
                 </div>
 
                 <div className="tags-section">
@@ -543,25 +624,19 @@ function App() {
                     ))}
                   </div>
                   <div className="add-tag">
-                    <input
-                      type="text"
-                      placeholder="Add tag..."
+                    <TagAutocomplete
                       value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && addTag()}
-                      className="tag-input"
-                      autoCapitalize="none"
-                      style={{
-                        fontSize: '10px',
-                        padding: '4px 6px',
-                        border: '1px solid #ddd',
-                        borderRadius: '3px',
-                        width: '100px',
-                        textTransform: 'none'
+                      placeholder="Add tag..."
+                      currentTags={songTags}
+                      onValueChange={setNewTag}
+                      onTagAdd={(tag) => {
+                        addTag(tag);
+                        setNewTag('');
                       }}
+                      className="tag-autocomplete-input"
                     />
                     <button
-                      onClick={addTag}
+                      onClick={addTagFromInput}
                       disabled={!newTag.trim()}
                       className="add-tag-btn"
                       style={{
@@ -663,6 +738,7 @@ function App() {
             isLooping={isLooping}
             tempStart={tempStart}
             tempEnd={tempEnd}
+            currentSongId={currentSong?.id}
             onSetLoopStart={setLoopStart}
             onSetLoopEnd={setLoopEnd}
             onToggleLoop={toggleLooping}
@@ -705,6 +781,11 @@ function App() {
       <CustomFieldsModal
         isOpen={customFieldsModal.isOpen}
         onClose={customFieldsModal.close}
+      />
+
+      <ToolsModal
+        isOpen={toolsModal.isOpen}
+        onClose={toolsModal.close}
       />
 
       <Toast

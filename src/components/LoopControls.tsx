@@ -10,11 +10,12 @@ interface LoopControlsProps {
   isLooping: boolean;
   tempStart: number | null;
   tempEnd: number | null;
+  currentSongId?: string;
   onSetLoopStart: (time: number) => void;
   onSetLoopEnd: (time: number) => void;
   onToggleLoop: () => void;
   onSelectLoop: (loop: LoopSegment | null) => void;
-  onSaveLoop: (name: string, startTime: number, endTime: number) => void;
+  onSaveLoop: (name: string, startTime: number, endTime: number, routineId?: string) => void;
   onDeleteLoop: (loopId: string) => void;
   onClearTempPoints: () => void;
   onChangeTempStart?: (time: number) => void;
@@ -28,6 +29,7 @@ export function LoopControls({
   isLooping,
   tempStart,
   tempEnd,
+  currentSongId,
   onSetLoopStart,
   onSetLoopEnd,
   onToggleLoop,
@@ -95,7 +97,7 @@ export function LoopControls({
       if (tempEnd > tempStart) {
         // Auto-generate name if none provided
         const name = newLoopName.trim() || `Segment ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`;
-        onSaveLoop(name, tempStart, tempEnd);
+        onSaveLoop(name, tempStart, tempEnd, currentSongId);
         setNewLoopName('');
         setShowSaveDialog(false);
       } else {
@@ -109,7 +111,7 @@ export function LoopControls({
       if (tempEnd > tempStart) {
         // Auto-save with generated name
         const name = `Segment ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`;
-        onSaveLoop(name, tempStart, tempEnd);
+        onSaveLoop(name, tempStart, tempEnd, currentSongId);
         setNewLoopName('');
       } else {
         alert('End time must be after start time');

@@ -11,6 +11,7 @@ interface SidebarTabsProps {
   isLooping: boolean;
   tempStart: number | null;
   tempEnd: number | null;
+  currentSongId?: string;
   onSetLoopStart: (time: number) => void;
   onSetLoopEnd: (time: number) => void;
   onToggleLoop: () => void;
@@ -29,6 +30,7 @@ export function SidebarTabs({
   isLooping,
   tempStart,
   tempEnd,
+  currentSongId,
   onSetLoopStart,
   onSetLoopEnd,
   onToggleLoop,
@@ -47,7 +49,7 @@ export function SidebarTabs({
         <h3>🎯 Segments</h3>
         <button
           className="config-button"
-          title="Segment Settings"
+          title="Settings"
           onClick={() => setIsSettingsOpen(true)}
         >
           ⚙️
@@ -61,6 +63,7 @@ export function SidebarTabs({
           isLooping={isLooping}
           tempStart={tempStart}
           tempEnd={tempEnd}
+          currentSongId={currentSongId}
           onSetLoopStart={onSetLoopStart}
           onSetLoopEnd={onSetLoopEnd}
           onToggleLoop={onToggleLoop}

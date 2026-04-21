@@ -10,6 +10,8 @@ interface SettingsModalProps {
 interface Settings {
   loopPrecision: 'frame' | 'second';
   defaultPlaybackSpeeds: number[];
+  defaultVolume: number;
+  defaultVolumeOnlyForNewVideos: boolean;
   exportFormat: 'csv' | 'json' | 'both';
   importFormat: 'auto' | 'csv' | 'json';
 }
@@ -17,6 +19,8 @@ interface Settings {
 const DEFAULT_SETTINGS: Settings = {
   loopPrecision: 'frame',
   defaultPlaybackSpeeds: [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+  defaultVolume: 100,
+  defaultVolumeOnlyForNewVideos: false,
   exportFormat: 'both',
   importFormat: 'auto'
 };
@@ -55,6 +59,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     saveSettings({ ...settings, importFormat: format });
   };
 
+  const handleDefaultVolumeChange = (volume: number) => {
+    saveSettings({ ...settings, defaultVolume: Math.max(0, Math.min(100, volume)) });
+  };
+
+  const handleDefaultVolumeOnlyForNewVideosChange = (onlyForNew: boolean) => {
+    saveSettings({ ...settings, defaultVolumeOnlyForNewVideos: onlyForNew });
+  };
+
   const addCustomSpeed = () => {
     const speed = parseFloat(customSpeed);
     if (!isNaN(speed) && speed > 0 && speed <= 4 && !settings.defaultPlaybackSpeeds.includes(speed)) {
@@ -75,7 +87,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md" title="Segment Settings">
+    <Modal isOpen={isOpen} onClose={onClose} size="md" title="Settings">
       <div className="settings-modal">
         {/* Loop Precision Section */}
         <div className="settings-section">
@@ -108,6 +120,53 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <strong>Second-level</strong> - Rounded to nearest second
               </span>
             </label>
+          </div>
+        </div>
+
+        {/* Default Volume Section */}
+        <div className="settings-section">
+          <h3>🔊 Default Volume</h3>
+          <p className="section-description">
+            Set the default volume level for videos (0-100%).
+          </p>
+          <div className="volume-setting">
+            <div className="volume-control-group">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={settings.defaultVolume}
+                onChange={(e) => handleDefaultVolumeChange(Number(e.target.value))}
+                className="volume-range"
+              />
+              <div className="volume-display">
+                <span className="volume-value">{settings.defaultVolume}%</span>
+              </div>
+            </div>
+            <div className="volume-presets">
+              {[25, 50, 75, 100].map(preset => (
+                <button
+                  key={preset}
+                  onClick={() => handleDefaultVolumeChange(preset)}
+                  className={`volume-preset ${settings.defaultVolume === preset ? 'active' : ''}`}
+                  type="button"
+                >
+                  {preset}%
+                </button>
+              ))}
+            </div>
+            <div className="volume-option">
+              <label className="checkbox-option">
+                <input
+                  type="checkbox"
+                  checked={settings.defaultVolumeOnlyForNewVideos}
+                  onChange={(e) => handleDefaultVolumeOnlyForNewVideosChange(e.target.checked)}
+                />
+                <span className="checkbox-label">
+                  Only apply to new videos (preserve individual song volume settings)
+                </span>
+              </label>
+            </div>
           </div>
         </div>
 
