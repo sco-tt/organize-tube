@@ -220,30 +220,53 @@ function App() {
     setSongTags([]); // Clear tags for new video
     const { defaultVolume } = getVolumeSettings();
     setVolume(defaultVolume); // Use default volume from settings
+    changeVolume(defaultVolume); // Actually set the player volume
     setCurrentSong(null); // Clear current song when loading new video
-  }, [clearLoopsDisplay, getVolumeSettings]);
+  }, [clearLoopsDisplay, getVolumeSettings, changeVolume]);
 
-  const addTag = useCallback((tag: string) => {
+  const addTag = useCallback(async (tag: string) => {
     const trimmedTag = tag.trim();
     if (trimmedTag && !songTags.includes(trimmedTag)) {
-      setSongTags(prev => [...prev, trimmedTag]);
+      const newTags = [...songTags, trimmedTag];
+      setSongTags(newTags);
 
       // Add to tags service cache for immediate availability
       TagsService.getInstance().addToCache([trimmedTag]);
-    }
-  }, [songTags]);
 
-  const addTagFromInput = useCallback(() => {
+      // Auto-save tags if this is a saved song
+      if (currentSong?.id) {
+        try {
+          await updateSong(currentSong.id, { tags_json: JSON.stringify(newTags) });
+          console.log('Tags auto-saved for song:', currentSong.id);
+        } catch (error) {
+          console.error('Failed to auto-save tags:', error);
+        }
+      }
+    }
+  }, [songTags, currentSong, updateSong]);
+
+  const addTagFromInput = useCallback(async () => {
     const tag = newTag.trim();
     if (tag && !songTags.includes(tag)) {
-      addTag(tag);
+      await addTag(tag);
       setNewTag('');
     }
   }, [newTag, songTags, addTag]);
 
-  const removeTag = useCallback((tagToRemove: string) => {
-    setSongTags(prev => prev.filter(tag => tag !== tagToRemove));
-  }, []);
+  const removeTag = useCallback(async (tagToRemove: string) => {
+    const newTags = songTags.filter(tag => tag !== tagToRemove);
+    setSongTags(newTags);
+
+    // Auto-save tags if this is a saved song
+    if (currentSong?.id) {
+      try {
+        await updateSong(currentSong.id, { tags_json: JSON.stringify(newTags) });
+        console.log('Tags auto-saved after removal for song:', currentSong.id);
+      } catch (error) {
+        console.error('Failed to auto-save tags after removal:', error);
+      }
+    }
+  }, [songTags, currentSong, updateSong]);
 
   const fetchVideoTitle = useCallback(async (videoId: string): Promise<{title: string, author: string}> => {
     try {
@@ -296,7 +319,8 @@ function App() {
         duration: duration || 0,
         notes: '',
         freeform_notes: '',
-        volume: volume || 100
+        volume: volume || 100,
+        tags_json: JSON.stringify(songTags)
       };
 
       console.log('Attempting to save song data:', songData);
@@ -358,7 +382,7 @@ function App() {
   }, [videoId, videoUrl, duration, loops, songTags, showToastNotification, fetchVideoTitle, saveSong, checkUrlExists]);
 
   const handleSongSelect = useCallback(async (songId: string, songUrl: string) => {
-    console.log('handleSongSelect: Called with songId:', songId, 'songUrl:', songUrl);
+    console.log('🎵 handleSongSelect: Called with songId:', songId, 'songUrl:', songUrl);
     const id = extractVideoId(songUrl);
     console.log('handleSongSelect: Extracted video ID:', id);
 
@@ -379,25 +403,43 @@ function App() {
       // Load the full song data
       try {
         const songData = await findSongById(songId);
+        console.log('🎵 Full song data loaded:', songData);
+        console.log('🎵 songData.tags_json:', songData?.tags_json);
         setCurrentSong(songData);
 
         // Set volume based on settings
         const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
         const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
         setVolume(volumeToUse);
+        changeVolume(volumeToUse); // Actually set the player volume
+
+        // Load tags for this song
+        console.log('Loading tags for song:', songData?.id, 'tags_json:', songData?.tags_json);
+        try {
+          const songTags = JSON.parse(songData?.tags_json || '[]');
+          console.log('Parsed tags:', songTags);
+          if (Array.isArray(songTags)) {
+            setSongTags(songTags);
+            console.log('Set tags to:', songTags);
+          } else {
+            console.log('Tags not array, clearing');
+            setSongTags([]);
+          }
+        } catch (tagError) {
+          console.warn('Failed to parse song tags:', tagError);
+          setSongTags([]);
+        }
       } catch (error) {
         console.error('Failed to load song data:', error);
+        setSongTags([]); // Clear tags if song loading fails
       }
-
-      // TODO: Load tags for this song
-      setSongTags([]);
 
       showToastNotification('Song loaded successfully! 🎵');
     } else {
       console.error('handleSongSelect: Could not extract video ID from URL:', songUrl);
       showToastNotification(`Invalid YouTube URL: "${songUrl}". Please edit the song and add a valid YouTube URL.`);
     }
-  }, [isLooping, toggleLooping, loadSegmentsForRoutine, showToastNotification, findSongById, getVolumeSettings]);
+  }, [isLooping, toggleLooping, loadSegmentsForRoutine, showToastNotification, findSongById, getVolumeSettings, changeVolume]);
 
   const handleSongUpdate = useCallback(async (updatedSong: SongRoutine) => {
     try {
@@ -629,8 +671,8 @@ function App() {
                       placeholder="Add tag..."
                       currentTags={songTags}
                       onValueChange={setNewTag}
-                      onTagAdd={(tag) => {
-                        addTag(tag);
+                      onTagAdd={async (tag) => {
+                        await addTag(tag);
                         setNewTag('');
                       }}
                       className="tag-autocomplete-input"

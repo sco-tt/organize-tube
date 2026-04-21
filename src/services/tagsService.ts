@@ -1,5 +1,9 @@
 import { databaseService } from './databaseService';
 
+interface TagsQueryResult {
+  tags_json: string;
+}
+
 export class TagsService {
   private static instance: TagsService;
   private cachedTags: string[] = [];
@@ -23,8 +27,7 @@ export class TagsService {
     }
 
     try {
-      const db = await databaseService.getDatabase();
-      const result = await db.select(
+      const result = await databaseService.executeQuery<TagsQueryResult>(
         `SELECT tags_json FROM song_routines WHERE tags_json IS NOT NULL AND tags_json != '[]'`
       );
 

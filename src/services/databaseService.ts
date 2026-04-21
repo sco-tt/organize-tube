@@ -32,6 +32,7 @@ class DatabaseService {
         notes TEXT,
         freeform_notes TEXT,
         volume INTEGER DEFAULT 100,
+        tags_json TEXT DEFAULT '[]',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_practiced TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
