@@ -28,14 +28,16 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
 
-    // Use GitHub Pages for optimized YouTube embed
-    const embedUrl = "https://sco-tt.github.io/segment-studio/";
+    // Use environment variables for embed configuration
+    const embedUrl = import.meta.env.VITE_EMBED_URL || "https://sco-tt.github.io/segment-studio/";
+    const allowedOrigin = import.meta.env.VITE_EMBED_ORIGIN || 'https://sco-tt.github.io';
+    const targetOrigin = import.meta.env.VITE_EMBED_ORIGIN || 'https://sco-tt.github.io';
 
     // Message handler for communication with iframe
     useEffect(() => {
       const handleMessage = (event: MessageEvent) => {
-        // Allow messages from GitHub Pages domain
-        if (event.origin !== 'https://sco-tt.github.io') return;
+        // Allow messages from appropriate domain based on environment
+        if (event.origin !== allowedOrigin) return;
 
         const { type, state, error, time, duration: dur } = event.data;
 
@@ -114,7 +116,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     // Helper function to send messages to iframe
     const sendMessage = (message: any) => {
       if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(message, 'https://sco-tt.github.io');
+        iframeRef.current.contentWindow.postMessage(message, targetOrigin);
       }
     };
 

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { YouTubePlayer, YouTubePlayerHandle } from "./components/YouTubePlayer";
 import { LoopProgressBar } from "./components/LoopProgressBar";
 import { SidebarTabs } from "./components/SidebarTabs/SidebarTabs";
@@ -39,6 +39,9 @@ function App() {
   const mySongsModal = useModal();
   const customFieldsModal = useModal();
   const toolsModal = useModal();
+
+  // State for tag filtering in MySongsModal
+  const [mySongsInitialTagFilter, setMySongsInitialTagFilter] = useState<string | null>(null);
 
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -126,9 +129,15 @@ function App() {
 
   const handlePlayerReady = useCallback(() => {
     console.log('Player is ready for control');
-    // Note: Don't set volume here as it causes restarts
-    // Volume will be synced through the monitoring interval
-  }, []);
+
+    // Apply default volume when player is ready, with a small delay to prevent restarts
+    setTimeout(() => {
+      const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
+      const volumeToUse = onlyForNewVideos && currentSong?.volume ? currentSong.volume : defaultVolume;
+      changeVolume(volumeToUse);
+      console.log('Applied volume on player ready:', volumeToUse, { defaultVolume, onlyForNewVideos, songVolume: currentSong?.volume });
+    }, 100);
+  }, [getVolumeSettings, changeVolume, currentSong]);
 
   const handleStateChange = useCallback((state: number) => {
     // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (queued)
@@ -208,8 +217,41 @@ function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const essentialSpeeds = [0.5, 0.7, 0.8, 0.9, 1.0];
+  // Essential speeds from settings - reactive to settings changes
+  const [essentialSpeeds, setEssentialSpeeds] = useState<number[]>([0.5, 0.7, 0.8, 0.9, 1.0]);
   const allSpeedOptions = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+  // Load speeds from settings on component mount and settings changes
+  useEffect(() => {
+    const loadSpeedsFromSettings = () => {
+      try {
+        const savedSettings = localStorage.getItem('segment-studio-settings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          if (settings.defaultPlaybackSpeeds && Array.isArray(settings.defaultPlaybackSpeeds)) {
+            setEssentialSpeeds(settings.defaultPlaybackSpeeds);
+            return;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to read speed settings:', error);
+      }
+      // Fallback to default essential speeds
+      setEssentialSpeeds([0.5, 0.7, 0.8, 0.9, 1.0]);
+    };
+
+    loadSpeedsFromSettings();
+
+    // Listen for settings changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'segment-studio-settings') {
+        loadSpeedsFromSettings();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
 
   const handleVideoLoad = useCallback((videoId: string, videoUrl: string) => {
@@ -267,6 +309,12 @@ function App() {
       }
     }
   }, [songTags, currentSong, updateSong]);
+
+  const handleTagClick = useCallback((tag: string) => {
+    // Set the initial tag filter and open the MySongsModal
+    setMySongsInitialTagFilter(tag);
+    mySongsModal.open();
+  }, [mySongsModal]);
 
   const fetchVideoTitle = useCallback(async (videoId: string): Promise<{title: string, author: string}> => {
     try {
@@ -654,7 +702,13 @@ function App() {
                   <div className="tags-container">
                     {songTags.map((tag) => (
                       <span key={tag} className="tag-item">
-                        {tag}
+                        <button
+                          onClick={() => handleTagClick(tag)}
+                          className="tag-text-button"
+                          title={`Find other songs with tag: ${tag}`}
+                        >
+                          🏷️ {tag}
+                        </button>
                         <button
                           onClick={() => removeTag(tag)}
                           className="tag-remove"
@@ -818,6 +872,7 @@ function App() {
         isOpen={mySongsModal.isOpen}
         onClose={mySongsModal.close}
         onSongSelect={handleSongSelect}
+        initialTagFilter={mySongsInitialTagFilter}
       />
 
       <CustomFieldsModal

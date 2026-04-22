@@ -18,7 +18,7 @@ interface Settings {
 
 const DEFAULT_SETTINGS: Settings = {
   loopPrecision: 'frame',
-  defaultPlaybackSpeeds: [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+  defaultPlaybackSpeeds: [0.5, 0.7, 0.8, 0.9, 1.0],
   defaultVolume: 100,
   defaultVolumeOnlyForNewVideos: false,
   exportFormat: 'both',

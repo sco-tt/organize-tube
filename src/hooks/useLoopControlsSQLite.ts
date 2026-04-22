@@ -171,8 +171,11 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
   }, [playerRef]);
 
   const toggleLooping = useCallback(() => {
+    console.log('🛑 toggleLooping - Current state: isLooping=', isLooping, 'activeLoop=', !!activeLoop);
+
     // Check if we have either an active loop OR temp start/end points
     if (!activeLoop && (tempStart === null || tempEnd === null)) {
+      console.log('🛑 No active loop or temp points available');
       alert('Please set loop start (S) and end (E) points first');
       return;
     }
@@ -193,12 +196,16 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
 
     setIsLooping(prev => {
       const newLooping = !prev;
+      console.log('🛑 Toggling loop:', prev, '→', newLooping);
 
       // If starting to loop, seek to loop start
       if (newLooping && playerRef.current) {
         const loopToUse = activeLoop || { start_time: tempStart!, end_time: tempEnd! };
+        console.log('🛑 Starting loop, seeking to:', loopToUse.start_time);
         playerRef.current.seekTo(loopToUse.start_time);
         lastSeekTimeRef.current = Date.now();
+      } else if (!newLooping) {
+        console.log('🛑 Stopping loop');
       }
 
       return newLooping;

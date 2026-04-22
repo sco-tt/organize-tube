@@ -12,11 +12,13 @@ interface MySongsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSongSelect: (songId: string, url: string) => void;
+  initialTagFilter?: string | null;
 }
 
-export function MySongsModal({ isOpen, onClose, onSongSelect }: MySongsModalProps) {
+export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }: MySongsModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'artist' | 'created'>('recent');
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [editingSong, setEditingSong] = useState<SongRoutine | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [showHeaderAnalysis, setShowHeaderAnalysis] = useState(false);
@@ -65,16 +67,45 @@ export function MySongsModal({ isOpen, onClose, onSongSelect }: MySongsModalProp
   useEffect(() => {
     if (isOpen) {
       refreshSongs();
+      // Set initial tag filter if provided
+      if (initialTagFilter) {
+        setActiveTagFilter(initialTagFilter);
+      }
     }
-  }, [isOpen, refreshSongs]);
+  }, [isOpen, refreshSongs, initialTagFilter]);
+
+  // Clear tag filter when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveTagFilter(null);
+    }
+  }, [isOpen]);
+
+  // Helper function to parse tags from tags_json
+  const getSongTags = (song: SongRoutine): string[] => {
+    try {
+      return JSON.parse(song.tags_json || '[]');
+    } catch (error) {
+      return [];
+    }
+  };
 
   const filteredAndSortedSongs = useMemo(() => {
     return savedSongs
-      .filter(song =>
-        (song.title?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
-        (song.artist?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
-        (song.title?.toLowerCase().includes(searchQuery.toLowerCase()) || '')
-      )
+      .filter(song => {
+        // Text search filter
+        const matchesSearch = !searchQuery ||
+          song.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          song.artist?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          song.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          getSongTags(song).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        // Tag filter
+        const matchesTag = !activeTagFilter ||
+          getSongTags(song).map(tag => tag.toLowerCase()).includes(activeTagFilter.toLowerCase());
+
+        return matchesSearch && matchesTag;
+      })
       .sort((a, b) => {
         switch (sortBy) {
           case 'recent':
@@ -92,7 +123,7 @@ export function MySongsModal({ isOpen, onClose, onSongSelect }: MySongsModalProp
             return 0;
         }
       });
-  }, [savedSongs, searchQuery, sortBy]);
+  }, [savedSongs, searchQuery, sortBy, activeTagFilter]);
 
   const handleSongSelect = (song: SongRoutine) => {
     onSongSelect(song.id, song.url);
@@ -120,6 +151,71 @@ export function MySongsModal({ isOpen, onClose, onSongSelect }: MySongsModalProp
       alert('Error saving changes');
     }
   };
+
+  const handleTagClick = (tag: string) => {
+    setActiveTagFilter(activeTagFilter === tag ? null : tag);
+  };
+
+  const clearTagFilter = () => {
+    setActiveTagFilter(null);
+  };
+
+  // Get all unique tags from saved songs
+  const getAllTags = useMemo(() => {
+    const allTags = new Set<string>();
+    savedSongs.forEach(song => {
+      getSongTags(song).forEach(tag => allTags.add(tag));
+    });
+    return Array.from(allTags).sort();
+  }, [savedSongs]);
+
+  // Handle random song selection
+  const handleRandomLoad = () => {
+    if (savedSongs.length === 0) return;
+    const randomSong = savedSongs[Math.floor(Math.random() * savedSongs.length)];
+    handleSongSelect(randomSong);
+  };
+
+  // Handle random song selection from specific tag
+  const handleRandomFromTag = (tag: string) => {
+    const songsWithTag = savedSongs.filter(song =>
+      getSongTags(song).map(t => t.toLowerCase()).includes(tag.toLowerCase())
+    );
+    if (songsWithTag.length === 0) return;
+    const randomSong = songsWithTag[Math.floor(Math.random() * songsWithTag.length)];
+    handleSongSelect(randomSong);
+  };
+
+  // Handle quick load from default options
+  const handleQuickLoad = (url: string) => {
+    // Extract video ID from URL
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    const videoId = match && match[2].length === 11 ? match[2] : '';
+
+    if (videoId) {
+      onSongSelect('', url); // Use empty ID for new videos
+      onClose();
+    }
+  };
+
+  const quickLoadOptions = [
+    {
+      title: "🎸 Guitar Practice Song",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      description: "Popular song for guitar practice"
+    },
+    {
+      title: "🎹 Piano Tutorial",
+      url: "https://www.youtube.com/watch?v=09R8_2nJtjg",
+      description: "Piano lesson with clear instructions"
+    },
+    {
+      title: "🎵 Music Theory",
+      url: "https://www.youtube.com/watch?v=kxopViU98Xo",
+      description: "Educational music content"
+    }
+  ];
 
   const handleDelete = (songId: string) => {
     console.log('MySongsModal.handleDelete: Called with songId:', songId);
@@ -383,6 +479,56 @@ export function MySongsModal({ isOpen, onClose, onSongSelect }: MySongsModalProp
           </div>
         </div>
 
+        {activeTagFilter && (
+          <div className="active-tag-filter">
+            <span className="filter-label">Filtering by tag:</span>
+            <span className="active-tag">
+              🏷️ {activeTagFilter}
+              <button
+                onClick={clearTagFilter}
+                className="clear-filter-btn"
+                title="Clear tag filter"
+              >
+                ×
+              </button>
+            </span>
+            <span className="filter-count">
+              ({filteredAndSortedSongs.length} song{filteredAndSortedSongs.length !== 1 ? 's' : ''})
+            </span>
+          </div>
+        )}
+
+        {savedSongs.length > 0 && (
+          <div className="random-load-section">
+            <div className="random-load-actions">
+              <button
+                onClick={handleRandomLoad}
+                className="random-load-btn"
+                title="Load a random song from your collection"
+              >
+                🎲 Load Random
+              </button>
+              {getAllTags.length > 0 && (
+                <div className="random-tag-section">
+                  <span className="random-tag-label">Load random from tag:</span>
+                  <div className="random-tag-buttons">
+                    {getAllTags.map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => handleRandomFromTag(tag)}
+                        className="random-tag-btn"
+                        title={`Load a random song tagged with "${tag}"`}
+                      >
+                        🏷️ {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="songs-list">
           {loading ? (
             <div className="loading-state">
@@ -396,13 +542,37 @@ export function MySongsModal({ isOpen, onClose, onSongSelect }: MySongsModalProp
               <p>{error}</p>
             </div>
           ) : filteredAndSortedSongs.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">🎵</div>
-              <h3>No songs found</h3>
-              <p>
-                {searchQuery ? 'Try a different search term' : 'Save your first song to get started!'}
-              </p>
-            </div>
+            <>
+              {savedSongs.length === 0 ? (
+                // Show Quick Load Options when no saved songs at all
+                <div className="quick-load-section">
+                  <h3>Quick Load Options</h3>
+                  <p className="quick-load-description">
+                    Try these sample videos for testing the app features:
+                  </p>
+                  <div className="quick-options">
+                    {quickLoadOptions.map((option, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleQuickLoad(option.url)}
+                        className="quick-option-button"
+                        type="button"
+                      >
+                        <span className="option-title">{option.title}</span>
+                        <span className="option-description">{option.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                // Show empty state when filtered results are empty but songs exist
+                <div className="empty-state">
+                  <div className="empty-icon">🎵</div>
+                  <h3>No songs found</h3>
+                  <p>Try a different search term</p>
+                </div>
+              )}
+            </>
           ) : (
             filteredAndSortedSongs.map((song) => (
               <div key={song.id} className="song-item">
@@ -428,7 +598,25 @@ export function MySongsModal({ isOpen, onClose, onSongSelect }: MySongsModalProp
                     )}
                   </div>
 
-                  {/* TODO: Implement tags display with new SQLite structure */}
+                  <div className="song-tags">
+                    {getSongTags(song).length > 0 && (
+                      <div className="tags-container">
+                        {getSongTags(song).map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTagClick(tag);
+                            }}
+                            className={`tag-item clickable ${activeTagFilter === tag ? 'active' : ''}`}
+                            title={`Filter by tag: ${tag}`}
+                          >
+                            🏷️ {tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="song-actions">

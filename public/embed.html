@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Segment Studio YouTube Player</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: black;
+            overflow: hidden;
+        }
+        #player {
+            width: 100vw;
+            height: 100vh;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="player"></div>
+    <div id="loading" class="loading">Loading YouTube Player...</div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let player;
+        let isReady = false;
+        let loadingEl = document.getElementById('loading');
+
+        function onYouTubeIframeAPIReady() {
+            // Initialize with a default video or wait for video ID from parent
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoId = urlParams.get('v');
+
+            if (videoId) {
+                createPlayer(videoId);
+            } else {
+                // Wait for video ID from parent window
+                loadingEl.textContent = 'Waiting for video...';
+            }
+        }
+
+        function createPlayer(videoId) {
+            if (player) {
+                player.destroy();
+            }
+
+            loadingEl.style.display = 'none';
+
+            player = new YT.Player('player', {
+                videoId: videoId,
+                width: '100%',
+                height: '100%',
+                playerVars: {
+                    enablejsapi: 1,
+                    controls: 1,
+                    modestbranding: 1,
+                    rel: 0,
+                    autoplay: 0,
+                    fs: 1,
+                    disablekb: 0,
+                    iv_load_policy: 3,
+                    playsinline: 1,
+                    origin: window.parent !== window && document.referrer ? new URL(document.referrer).origin : window.location.origin
+                },
+                events: {
+                    onReady: function(event) {
+                        isReady = true;
+                        console.log('YouTube player ready');
+                        // Notify parent window that player is ready
+                        if (window.parent !== window) {
+                            window.parent.postMessage({type: 'player-ready'}, '*');
+                        }
+                    },
+                    onStateChange: function(event) {
+                        console.log('State changed:', event.data);
+                        if (window.parent !== window) {
+                            window.parent.postMessage({type: 'state-change', state: event.data}, '*');
+                        }
+                    },
+                    onError: function(event) {
+                        console.error('YouTube player error:', event.data);
+                        loadingEl.style.display = 'block';
+                        loadingEl.textContent = `YouTube Error: ${event.data}`;
+                        if (window.parent !== window) {
+                            window.parent.postMessage({type: 'error', error: event.data}, '*');
+                        }
+                    }
+                }
+            });
+        }
+
+        // Listen for commands from parent window
+        window.addEventListener('message', function(event) {
+            // Accept messages from any origin for flexibility
+            if (!event.data || typeof event.data !== 'object') return;
+
+            const { type, data } = event.data;
+            console.log('Received message:', type, data);
+
+            switch(type) {
+                case 'load-video':
+                    if (data && data.videoId) {
+                        createPlayer(data.videoId);
+                    }
+                    break;
+
+                case 'play':
+                    if (player && isReady && typeof player.playVideo === 'function') {
+                        player.playVideo();
+                    }
+                    break;
+
+                case 'pause':
+                    if (player && isReady && typeof player.pauseVideo === 'function') {
+                        player.pauseVideo();
+                    }
+                    break;
+
+                case 'seek':
+                    if (player && isReady && data && typeof data.time === 'number' && typeof player.seekTo === 'function') {
+                        player.seekTo(data.time, true); // allowSeekAhead=true for faster seeking
+                        // Send immediate time update after seek for better responsiveness
+                        setTimeout(() => {
+                            if (player && isReady && typeof player.getCurrentTime === 'function') {
+                                const time = player.getCurrentTime();
+                                window.parent.postMessage({type: 'current-time', time: time}, '*');
+                            }
+                        }, 25); // Very quick feedback
+                    }
+                    break;
+
+                case 'set-speed':
+                    if (player && isReady && data && typeof data.rate === 'number' && typeof player.setPlaybackRate === 'function') {
+                        player.setPlaybackRate(data.rate);
+                    }
+                    break;
+
+                case 'get-time':
+                    if (player && isReady && typeof player.getCurrentTime === 'function') {
+                        const time = player.getCurrentTime();
+                        window.parent.postMessage({type: 'current-time', time: time}, '*');
+                    }
+                    break;
+
+                case 'get-duration':
+                    if (player && isReady && typeof player.getDuration === 'function') {
+                        const duration = player.getDuration();
+                        window.parent.postMessage({type: 'duration', duration: duration}, '*');
+                    }
+                    break;
+
+                case 'set-volume':
+                    if (player && isReady && data && typeof data.volume === 'number' && typeof player.setVolume === 'function') {
+                        player.setVolume(data.volume);
+                    }
+                    break;
+
+                case 'get-volume':
+                    if (player && isReady && typeof player.getVolume === 'function') {
+                        const volume = player.getVolume();
+                        window.parent.postMessage({type: 'volume', volume: volume}, '*');
+                    }
+                    break;
+            }
+        });
+
+        // High-frequency time updates for smooth loops - optimized for performance
+        let lastTime = 0;
+        let lastDuration = 0;
+        setInterval(function() {
+            if (player && isReady && typeof player.getCurrentTime === 'function' && typeof player.getDuration === 'function') {
+                try {
+                    const time = player.getCurrentTime();
+                    const duration = player.getDuration();
+
+                    // Only send updates if time has changed significantly (reduces postMessage overhead)
+                    if ((Math.abs(time - lastTime) > 0.02 || Math.abs(duration - lastDuration) > 0.1) && time && duration) {
+                        window.parent.postMessage({
+                            type: 'time-update',
+                            time: time,
+                            duration: duration
+                        }, '*');
+                        lastTime = time;
+                        lastDuration = duration;
+                    }
+                } catch (e) {
+                    // Ignore errors during periodic updates
+                }
+            }
+        }, 25); // High frequency (25ms) for smooth loop performance
+
+        // Log when page loads
+        console.log('YouTube player page loaded');
+        if (window.parent !== window) {
+            console.log('Running in iframe context');
+        }
+    </script>
+</body>
+</html>
