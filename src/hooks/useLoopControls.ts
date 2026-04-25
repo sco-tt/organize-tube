@@ -59,7 +59,7 @@ export function useLoopControls({ playerRef, isPlaying }: UseLoopControlsProps) 
           console.warn('Error in loop checking:', error);
         }
       }
-    }, 50); // Check every 50ms for better precision
+    }, 100); // Check every 100ms - balances precision with performance
 
     return () => {
       if (loopCheckIntervalRef.current) {

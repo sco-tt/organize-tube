@@ -619,3 +619,103 @@
 .collapsible-section .loop-instructions {
   margin-top: 12px;
 }
+
+/* Edit Mode Styles */
+.edit-loop-badge {
+  position: absolute;
+  top: -6px;
+  right: 8px;
+  background-color: #fd7e14;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.edit-loop-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.edit-name-section {
+  width: 100%;
+}
+
+.edit-name-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: white;
+}
+
+.edit-name-input:focus {
+  outline: none;
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.edit-loop-times {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-loop-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.edit-loop-actions .temp-save,
+.edit-loop-actions .temp-delete {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-loop-actions .temp-save {
+  background: #28a745;
+  color: white;
+}
+
+.edit-loop-actions .temp-save:hover {
+  background: #218838;
+}
+
+.edit-loop-actions .temp-delete {
+  background: #6c757d;
+  color: white;
+}
+
+.edit-loop-actions .temp-delete:hover {
+  background: #5a6268;
+}
+
+/* Edit button for normal mode */
+.edit-loop {
+  background: #fd7e14;
+  color: white;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.edit-loop:hover {
+  background: #e8690c;
+  transform: scale(1.05);
+}

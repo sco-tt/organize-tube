@@ -94,7 +94,7 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
           console.warn('Error in loop checking:', error);
         }
       }
-    }, 25); // Check every 25ms for better precision and faster response
+    }, 100); // Check every 100ms - balances precision with performance
 
     return () => {
       if (loopCheckIntervalRef.current) {

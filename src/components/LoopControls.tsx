@@ -17,6 +17,7 @@ interface LoopControlsProps {
   onSelectLoop: (loop: LoopSegment | null) => void;
   onSaveLoop: (name: string, startTime: number, endTime: number, routineId?: string) => void;
   onDeleteLoop: (loopId: string) => void;
+  onUpdateLoop?: (loopId: string, name: string, startTime: number, endTime: number) => void;
   onClearTempPoints: () => void;
   onChangeTempStart?: (time: number) => void;
   onChangeTempEnd?: (time: number) => void;
@@ -36,12 +37,19 @@ export function LoopControls({
   onSelectLoop,
   onSaveLoop,
   onDeleteLoop,
+  onUpdateLoop,
   onClearTempPoints,
   onChangeTempStart,
   onChangeTempEnd
 }: LoopControlsProps) {
   const [newLoopName, setNewLoopName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+
+  // Edit state management
+  const [editingLoopId, setEditingLoopId] = useState<string | null>(null);
+  const [editLoopName, setEditLoopName] = useState('');
+  const [editStartTime, setEditStartTime] = useState(0);
+  const [editEndTime, setEditEndTime] = useState(0);
 
   // Collapsible sections state
   const [isLoopSettingExpanded, setIsLoopSettingExpanded] = useState(true);
@@ -130,13 +138,55 @@ export function LoopControls({
   }, [onClearTempPoints, activeLoop, isLooping, onToggleLoop, onSelectLoop]);
 
   const handlePlayLoop = useCallback((loop: LoopSegment) => {
-    // Select the loop
+    // Select the new loop (this will seek to its start time)
     onSelectLoop(loop);
-    // If not already looping, start looping
+
+    // If not currently looping, start looping
+    // If already looping, the loop will automatically switch to the newly selected segment
     if (!isLooping) {
       onToggleLoop();
     }
+    // Note: If already looping, just selecting the new loop is enough -
+    // the loop checking logic will automatically use the new active loop
   }, [onSelectLoop, onToggleLoop, isLooping]);
+
+  const handleStopLoop = useCallback(() => {
+    // Stop looping if currently active
+    if (isLooping) {
+      onToggleLoop();
+    }
+    // Clear the active loop to return to full video playback
+    onSelectLoop(null);
+  }, [isLooping, onToggleLoop, onSelectLoop]);
+
+  // Edit handlers
+  const handleStartEdit = useCallback((loop: LoopSegment) => {
+    setEditingLoopId(loop.id);
+    setEditLoopName(loop.name);
+    setEditStartTime(loop.start_time);
+    setEditEndTime(loop.end_time);
+  }, []);
+
+  const handleSaveEdit = useCallback(() => {
+    if (editingLoopId && onUpdateLoop) {
+      if (editEndTime > editStartTime) {
+        onUpdateLoop(editingLoopId, editLoopName, editStartTime, editEndTime);
+        setEditingLoopId(null);
+        setEditLoopName('');
+        setEditStartTime(0);
+        setEditEndTime(0);
+      } else {
+        alert('End time must be after start time');
+      }
+    }
+  }, [editingLoopId, editLoopName, editStartTime, editEndTime, onUpdateLoop]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingLoopId(null);
+    setEditLoopName('');
+    setEditStartTime(0);
+    setEditEndTime(0);
+  }, []);
 
   const hasValidTempLoop = tempStart !== null && tempEnd !== null && tempEnd > tempStart;
 
@@ -145,7 +195,13 @@ export function LoopControls({
       <div className="loop-header">
         <h3>🎯 Segments</h3>
         <button
-          onClick={onToggleLoop}
+          onClick={() => {
+            if (isLooping) {
+              handleStopLoop(); // Stop and clear segment, return to full video
+            } else {
+              onToggleLoop(); // Start looping (if temp points are set)
+            }
+          }}
           className={`loop-toggle ${isLooping ? 'active' : ''}`}
         >
           {isLooping ? '⏹️ Stop Loop' : '🔄 Start Loop'}
@@ -304,36 +360,100 @@ export function LoopControls({
               <div className="loops-list">
                 {loops.map((loop) => (
                   <div key={loop.id} className={`loop-item ${loop.id === activeLoop?.id ? 'active' : ''}`}>
-                    <div className="saved-loop-badge">SAVED</div>
-                    <div className="loop-details">
-                      <span className="loop-name">{loop.name}</span>
-                      <span className="loop-time">
-                        {formatTime(loop.start_time)} → {formatTime(loop.end_time)}
-                      </span>
-                    </div>
-                    <div className="loop-actions">
-                      <button
-                        onClick={() => onSelectLoop(loop)}
-                        className="select-loop"
-                        title="Select this segment"
-                      >
-                        ▶️
-                      </button>
-                      <button
-                        onClick={() => handlePlayLoop(loop)}
-                        className={`loop-toggle-btn ${activeLoop?.id === loop.id && isLooping ? 'active' : ''}`}
-                        title={activeLoop?.id === loop.id && isLooping ? "Stop looping" : "Start looping"}
-                      >
-                        {activeLoop?.id === loop.id && isLooping ? '⏹️' : '🔁'}
-                      </button>
-                      <button
-                        onClick={() => onDeleteLoop(loop.id)}
-                        className="delete-loop"
-                        title="Delete this segment"
-                      >
-                        🗑️
-                      </button>
-                    </div>
+                    {editingLoopId === loop.id ? (
+                      // Edit Mode - Reuse the same UI as temp loop creation
+                      <>
+                        <div className="edit-loop-badge">EDITING</div>
+                        <div className="edit-loop-info">
+                          <div className="edit-name-section">
+                            <input
+                              type="text"
+                              placeholder="Loop name (e.g., 'Verse 1', 'Solo')"
+                              value={editLoopName}
+                              onChange={(e) => setEditLoopName(e.target.value)}
+                              className="edit-name-input"
+                            />
+                          </div>
+                          <div className="edit-loop-times">
+                            <div className="temp-time-row">
+                              <span className="time-label">Start:</span>
+                              <EditableTime
+                                timeInSeconds={editStartTime}
+                                onTimeChange={setEditStartTime}
+                                className="time-value"
+                              />
+                            </div>
+                            <div className="temp-time-row">
+                              <span className="time-label">End:</span>
+                              <EditableTime
+                                timeInSeconds={editEndTime}
+                                onTimeChange={setEditEndTime}
+                                className="time-value"
+                              />
+                              <span className="temp-duration-inline">
+                                <span className="duration-label">Duration:</span>
+                                <span className="duration-value">{formatTime(editEndTime - editStartTime)}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="edit-loop-actions">
+                          <button onClick={handleSaveEdit} className="temp-save">
+                            💾 Save
+                          </button>
+                          <button onClick={handleCancelEdit} className="temp-delete">
+                            ✕ Cancel
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      // Normal Display Mode
+                      <>
+                        <div className="saved-loop-badge">SAVED</div>
+                        <div className="loop-details">
+                          <span className="loop-name">{loop.name}</span>
+                          <span className="loop-time">
+                            {formatTime(loop.start_time)} → {formatTime(loop.end_time)}
+                          </span>
+                        </div>
+                        <div className="loop-actions">
+                          <button
+                            onClick={() => onSelectLoop(loop)}
+                            className="select-loop"
+                            title="Select this segment"
+                          >
+                            ▶️
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (activeLoop?.id === loop.id && isLooping) {
+                                handleStopLoop(); // Stop and exit to full video
+                              } else {
+                                handlePlayLoop(loop); // Start looping this segment
+                              }
+                            }}
+                            className={`loop-toggle-btn ${activeLoop?.id === loop.id && isLooping ? 'active' : ''}`}
+                            title={activeLoop?.id === loop.id && isLooping ? "Stop and play full video" : "Start looping this segment"}
+                          >
+                            {activeLoop?.id === loop.id && isLooping ? '⏹️' : '🔁'}
+                          </button>
+                          <button
+                            onClick={() => handleStartEdit(loop)}
+                            className="edit-loop"
+                            title="Edit this segment"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => onDeleteLoop(loop.id)}
+                            className="delete-loop"
+                            title="Delete this segment"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

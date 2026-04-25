@@ -758,3 +758,47 @@ kbd {
     color: #fff;
   }
 }
+
+/* Copy Link Button */
+.video-controls-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.copy-link-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.copy-link-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+  transform: scale(1.05);
+}
+
+.copy-link-btn:active {
+  transform: scale(0.95);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .copy-link-btn {
+    color: #9ca3af;
+  }
+
+  .copy-link-btn:hover {
+    background: #374151;
+    color: #d1d5db;
+  }
+}

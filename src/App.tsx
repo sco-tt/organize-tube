@@ -89,6 +89,7 @@ function App() {
     setLoopEnd,
     saveLoop,
     deleteLoop,
+    updateLoop,
     selectLoop,
     toggleLooping,
     clearLoops,
@@ -100,6 +101,10 @@ function App() {
     loadStandaloneSegments
   } = useLoopControlsSQLite({ playerRef, isPlaying });
 
+  // Wrapper function to match the LoopControls interface
+  const handleUpdateLoop = useCallback((loopId: string, name: string, startTime: number, endTime: number) => {
+    updateLoop(loopId, { name, start_time: startTime, end_time: endTime });
+  }, [updateLoop]);
 
 
   const togglePlayPause = useCallback(() => {
@@ -180,6 +185,19 @@ function App() {
     setToastMessage(message);
     setShowToast(true);
   }, []);
+
+  // Copy video link to clipboard
+  const handleCopyLink = useCallback(async () => {
+    if (!videoUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(videoUrl);
+      showToastNotification('🔗 Link copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      showToastNotification('❌ Failed to copy link');
+    }
+  }, [videoUrl, showToastNotification]);
 
   const handleSetLoopStartShortcut = useCallback(() => {
     const time = Math.floor(currentTime * 100) / 100;
@@ -766,6 +784,17 @@ function App() {
 
               <div className="video-area">
                 <div className="video-container">
+                {videoId && videoUrl && (
+                  <div className="video-controls-top">
+                    <button
+                      onClick={handleCopyLink}
+                      className="copy-link-btn"
+                      title="Copy video link to clipboard"
+                    >
+                      🔗 copy link
+                    </button>
+                  </div>
+                )}
                 {videoId ? (
                   <YouTubePlayer
                     ref={playerRef}
@@ -841,6 +870,7 @@ function App() {
             onSelectLoop={selectLoop}
             onSaveLoop={saveLoop}
             onDeleteLoop={deleteLoop}
+            onUpdateLoop={handleUpdateLoop}
             onClearTempPoints={clearTempPoints}
             onChangeTempStart={changeTempStart}
             onChangeTempEnd={changeTempEnd}

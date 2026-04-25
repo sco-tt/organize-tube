@@ -18,6 +18,7 @@ interface SidebarTabsProps {
   onSelectLoop: (loop: any) => void;
   onSaveLoop: (name: string, startTime: number, endTime: number) => void;
   onDeleteLoop: (id: string) => void;
+  onUpdateLoop?: (loopId: string, name: string, startTime: number, endTime: number) => void;
   onClearTempPoints: () => void;
   onChangeTempStart?: (time: number) => void;
   onChangeTempEnd?: (time: number) => void;
@@ -37,6 +38,7 @@ export function SidebarTabs({
   onSelectLoop,
   onSaveLoop,
   onDeleteLoop,
+  onUpdateLoop,
   onClearTempPoints,
   onChangeTempStart,
   onChangeTempEnd
@@ -70,6 +72,7 @@ export function SidebarTabs({
           onSelectLoop={onSelectLoop}
           onSaveLoop={onSaveLoop}
           onDeleteLoop={onDeleteLoop}
+          onUpdateLoop={onUpdateLoop}
           onClearTempPoints={onClearTempPoints}
           onChangeTempStart={onChangeTempStart}
           onChangeTempEnd={onChangeTempEnd}

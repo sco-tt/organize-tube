@@ -102,13 +102,14 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       }
     }, [videoId, embedUrl]);
 
-    // Optimized time polling - only when ready and less frequent than iframe updates
+    // Optimized time polling - reduced frequency to minimize console spam
     useEffect(() => {
       if (!isReady) return;
 
+      // Use 500ms polling - good balance between responsiveness and performance
       const interval = setInterval(() => {
         sendMessage({ type: 'get-time' });
-      }, 100); // 100ms polling for good responsiveness
+      }, 500); // Reduced from 100ms to 500ms
 
       return () => clearInterval(interval);
     }, [isReady]);
