@@ -8,6 +8,7 @@ import { LoadVideoModal } from "./components/LoadVideoModal/LoadVideoModal";
 import { MySongsModal } from "./components/MySongsModal/MySongsModal";
 import { CustomFieldsModal } from "./components/CustomFieldsModal/CustomFieldsModal";
 import { ToolsModal } from "./components/ToolsModal/ToolsModal";
+import { SetlistPrinterModal } from "./components/SetlistPrinterModal/SetlistPrinterModal";
 import { SongInfoPanel } from "./components/SongInfoPanel/SongInfoPanel";
 import { Toast } from "./components/Toast/Toast";
 import { useLoopControlsSQLite } from "./hooks/useLoopControlsSQLite";
@@ -39,6 +40,7 @@ function App() {
   const mySongsModal = useModal();
   const customFieldsModal = useModal();
   const toolsModal = useModal();
+  const setlistPrinterModal = useModal();
 
   // State for tag filtering in MySongsModal
   const [mySongsInitialTagFilter, setMySongsInitialTagFilter] = useState<string | null>(null);
@@ -711,6 +713,27 @@ function App() {
                   >
                     🎯 Practice Tools
                   </button>
+
+                  <button
+                    className="setlist-printer-link"
+                    onClick={setlistPrinterModal.open}
+                    type="button"
+                    title="Create printable setlists"
+                    style={{
+                      background: 'transparent',
+                      color: '#dc3545',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      fontWeight: '500',
+                      border: '1px solid #dc3545',
+                      borderRadius: '4px',
+                      width: '100%',
+                      marginTop: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📄 Print Setlist
+                  </button>
                 </div>
 
                 <div className="tags-section">
@@ -913,6 +936,11 @@ function App() {
       <ToolsModal
         isOpen={toolsModal.isOpen}
         onClose={toolsModal.close}
+      />
+
+      <SetlistPrinterModal
+        isOpen={setlistPrinterModal.isOpen}
+        onClose={setlistPrinterModal.close}
       />
 
       <Toast
