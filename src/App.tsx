@@ -18,6 +18,7 @@ import { useSavedSongs } from "./hooks/useSavedSongs";
 import { TagAutocomplete } from "./components/TagAutocomplete/TagAutocomplete";
 import { TagsService } from "./services/tagsService";
 import { SongRoutine } from "./repositories/songRoutineRepository";
+import { Mp3DownloadService } from "./services/mp3DownloadService";
 // Inline video ID extraction function
 function extractVideoId(url: string): string {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -52,6 +53,8 @@ function App() {
   const [newTag, setNewTag] = useState('');
   const [volume, setVolume] = useState(100);
   const [currentSong, setCurrentSong] = useState<SongRoutine | null>(null);
+  const [isMp3DownloadEnabled, setIsMp3DownloadEnabled] = useState(false);
+  const [isDownloadingMp3, setIsDownloadingMp3] = useState(false);
 
   const playerRef = useRef<YouTubePlayerHandle>(null);
 
@@ -201,6 +204,41 @@ function App() {
     }
   }, [videoUrl, showToastNotification]);
 
+  // Download video as MP3
+  const handleDownloadMp3 = useCallback(async () => {
+    if (!videoUrl || !isMp3DownloadEnabled) return;
+
+    setIsDownloadingMp3(true);
+
+    try {
+      const downloadService = Mp3DownloadService.getInstance();
+
+      // Generate filename from current song data or video title
+      const filename = currentSong?.title || currentSong?.name || `youtube_${videoId}`;
+
+      showToastNotification('🎵 Starting MP3 download...');
+
+      const result = await downloadService.downloadMp3(videoUrl, filename);
+
+      if (result.success) {
+        showToastNotification('✅ MP3 download completed!');
+
+        // Optionally, add the downloaded MP3 to the song database
+        if (currentSong && result.filePath) {
+          // Could add a local_file_path field to the song record
+          console.log('MP3 downloaded to:', result.filePath);
+        }
+      } else {
+        showToastNotification(`❌ Download failed: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('MP3 download error:', error);
+      showToastNotification('❌ Download failed with unknown error');
+    } finally {
+      setIsDownloadingMp3(false);
+    }
+  }, [videoUrl, videoId, currentSong, isMp3DownloadEnabled, showToastNotification]);
+
   const handleSetLoopStartShortcut = useCallback(() => {
     const time = Math.floor(currentTime * 100) / 100;
     setLoopStart(time);
@@ -271,6 +309,22 @@ function App() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Check if MP3 download feature is enabled
+  useEffect(() => {
+    const checkMp3Feature = async () => {
+      try {
+        const downloadService = Mp3DownloadService.getInstance();
+        const isEnabled = await downloadService.isDownloadEnabled();
+        setIsMp3DownloadEnabled(isEnabled);
+      } catch (error) {
+        console.error('Failed to check MP3 download feature:', error);
+        setIsMp3DownloadEnabled(false);
+      }
+    };
+
+    checkMp3Feature();
   }, []);
 
 
@@ -816,6 +870,16 @@ function App() {
                     >
                       🔗 copy link
                     </button>
+                    {isMp3DownloadEnabled && (
+                      <button
+                        onClick={handleDownloadMp3}
+                        className="download-mp3-btn"
+                        disabled={isDownloadingMp3}
+                        title="Download video as MP3"
+                      >
+                        {isDownloadingMp3 ? '⏳ downloading...' : '⬇️ download mp3'}
+                      </button>
+                    )}
                   </div>
                 )}
                 {videoId ? (

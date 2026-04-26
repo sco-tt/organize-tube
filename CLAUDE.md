@@ -266,6 +266,12 @@ Switch to Electron if critical blockers discovered in Phase 1 or performance tar
 - Avoid excessive explanations or verbose progress updates
 - Get to the point quickly and provide actionable information
 
+### Testing Approach
+- **Test only in the Tauri desktop app** - not the browser/web version
+- Features like MP3 download require the actual Tauri runtime to function
+- Use `npm run tauri dev` to launch the desktop app for testing
+- Browser version at localhost:1420 uses mocks and limited functionality
+
 ### Workflow Pattern
 1. Load YouTube URL → Creates temporary routine with default settings
 2. Adjust speed, set loops, add notes → Still temporary
