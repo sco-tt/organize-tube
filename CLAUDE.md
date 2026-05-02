@@ -272,6 +272,7 @@ Switch to Electron if critical blockers discovered in Phase 1 or performance tar
 - Use `npm run tauri dev` to launch the desktop app for testing
 - Browser version at localhost:1420 uses mocks and limited functionality
 
+
 ### Workflow Pattern
 1. Load YouTube URL → Creates temporary routine with default settings
 2. Adjust speed, set loops, add notes → Still temporary

@@ -78,6 +78,77 @@
   color: #155724;
 }
 
+/* Current Loop Display and Controls */
+.current-loop-display {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.current-loop-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.edit-current,
+.remove-current {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.edit-current {
+  background-color: #fd7e14;
+  color: white;
+}
+
+.edit-current:hover {
+  background-color: #e8690c;
+}
+
+.remove-current {
+  background-color: #dc3545;
+  color: white;
+}
+
+.remove-current:hover {
+  background-color: #c82333;
+}
+
+/* Current Loop Edit Mode */
+.current-loop-edit {
+  background-color: #fff3cd;
+  border: 2px solid #fd7e14;
+  border-radius: 6px;
+  padding: 12px;
+  position: relative;
+}
+
+.current-edit-badge {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  background-color: #fd7e14;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.current-loop-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
 .loop-setting {
   background-color: white;
   border-radius: 6px;
@@ -364,6 +435,26 @@
   color: #495057;
 }
 
+/* All Loops Section (Unified List) */
+.all-loops-section {
+  background-color: white;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #dee2e6;
+}
+
+.all-loops-section h4 {
+  margin: 0 0 15px 0;
+  color: #495057;
+}
+
+.all-loops-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .loops-list {
   display: flex;
   flex-direction: column;
@@ -391,6 +482,46 @@
 .loop-item.active {
   background-color: #d4edda;
   border-color: #c3e6cb;
+}
+
+.loop-item.currently-playing {
+  background-color: #cce7ff;
+  border-color: #007bff;
+  border-left-color: #007bff;
+  border-left-width: 4px;
+}
+
+/* Loop Badge Styles */
+.loop-badge {
+  position: absolute;
+  top: -6px;
+  right: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.loop-badge.playing {
+  background-color: #007bff;
+  color: white;
+  animation: pulse-playing 2s infinite;
+}
+
+.loop-badge.saved {
+  background-color: #28a745;
+  color: white;
+}
+
+@keyframes pulse-playing {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .loop-details {
@@ -499,9 +630,30 @@
   }
 
   .loop-setting,
-  .saved-loops {
+  .saved-loops,
+  .all-loops-section {
     background-color: #3d3d3d;
     border-color: #555;
+  }
+
+  .all-loops-section h4 {
+    color: #fff;
+  }
+
+  .current-loop-edit {
+    background-color: #4a3a00;
+    border-color: #fd7e14;
+  }
+
+  .edit-name-input {
+    background-color: #2d2d2d;
+    border-color: #555;
+    color: #fff;
+  }
+
+  .loop-item.currently-playing {
+    background-color: #1a3a4a;
+    border-color: #007bff;
   }
 
   .time-display {
