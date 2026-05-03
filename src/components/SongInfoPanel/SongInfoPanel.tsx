@@ -155,7 +155,13 @@ export function SongInfoPanel({ song, onSongUpdate }: SongInfoPanelProps) {
                   </div>
                 );
               } catch (error) {
-                return null;
+                // Fallback: display raw freeform_notes as plain text
+                return (
+                  <div className="info-row">
+                    <span className="info-label">Notes:</span>
+                    <span className="info-value">{song.freeform_notes}</span>
+                  </div>
+                );
               }
             })()}
           </div>
