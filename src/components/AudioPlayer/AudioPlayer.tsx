@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import './AudioPlayer.css';
 import { Mp3UploadService } from '../../services/mp3UploadService';
 
@@ -27,6 +27,7 @@ export function AudioPlayer({ title, contentType, mp3ContentId, onError }: Audio
   const [currentContentId, setCurrentContentId] = useState<string>('');
 
   const uploadService = Mp3UploadService.getInstance();
+  const audioElementsRef = useRef<HTMLAudioElement[]>([]);
 
   const loadTracks = useCallback(async () => {
     setIsLoading(true);
@@ -52,6 +53,9 @@ export function AudioPlayer({ title, contentType, mp3ContentId, onError }: Audio
         const audioUrl = await uploadService.getAudioUrl(audioFileId);
         const audio = new Audio(audioUrl);
         audio.preload = 'metadata';
+
+        // Track this audio element
+        audioElementsRef.current = [audio];
 
         const trackState: TrackState = {
           audio,
@@ -81,11 +85,15 @@ export function AudioPlayer({ title, contentType, mp3ContentId, onError }: Audio
         // Load stem group tracks
         const stemTracks = await uploadService.getStemGroupTracks(mp3ContentId);
         const newTracks = new Map<string, TrackState>();
+        const newAudioElements: HTMLAudioElement[] = [];
 
         for (const trackInfo of stemTracks) {
           const audioUrl = await uploadService.getAudioUrl(trackInfo.audio_file_id, mp3ContentId);
           const audio = new Audio(audioUrl);
           audio.preload = 'metadata';
+
+          // Track this audio element
+          newAudioElements.push(audio);
 
           const trackState: TrackState = {
             audio,
@@ -110,6 +118,8 @@ export function AudioPlayer({ title, contentType, mp3ContentId, onError }: Audio
           audio.muted = trackInfo.is_muted;
         }
 
+        // Store all audio elements in ref
+        audioElementsRef.current = newAudioElements;
         setTrackInfos(stemTracks);
       }
     } catch (error) {
@@ -125,10 +135,22 @@ export function AudioPlayer({ title, contentType, mp3ContentId, onError }: Audio
 
     // Cleanup when component unmounts or content changes
     return () => {
-      tracks.forEach(track => {
+      // Stop via tracks state
+      tracks.forEach((track) => {
         track.audio.pause();
         track.audio.src = '';
+        track.audio.load(); // Force reload to clear any buffered data
       });
+
+      // Also stop via direct ref access for any missed elements
+      audioElementsRef.current.forEach((audio) => {
+        audio.pause();
+        audio.src = '';
+        audio.load();
+      });
+
+      // Clear the ref
+      audioElementsRef.current = [];
     };
   }, [contentType, mp3ContentId]); // Only reload when content actually changes
 
@@ -149,6 +171,32 @@ export function AudioPlayer({ title, contentType, mp3ContentId, onError }: Audio
       setTracks(prev => new Map(prev.set(trackId, { ...track, isPlaying: newIsPlaying })));
     });
   }, [isPlaying, tracks, onError]);
+
+  // Immediate stop function that can be called externally
+  const stopAllAudio = useCallback(() => {
+    // Stop via tracks state
+    tracks.forEach((track) => {
+      track.audio.pause();
+      track.audio.currentTime = 0;
+    });
+
+    // Also stop via direct ref access (more reliable)
+    audioElementsRef.current.forEach((audio) => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+
+    setIsPlaying(false);
+  }, [tracks]);
+
+  // Expose the stop function via a ref or global way if needed
+  useEffect(() => {
+    // Store stop function globally so it can be called from outside
+    (window as any).stopAudioPlayer = stopAllAudio;
+    return () => {
+      delete (window as any).stopAudioPlayer;
+    };
+  }, [stopAllAudio]);
 
   const handleSeek = useCallback((newTime: number) => {
     tracks.forEach((track, trackId) => {

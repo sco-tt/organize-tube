@@ -281,16 +281,39 @@ function App() {
 
 
   const handleVideoLoad = useCallback((videoId: string, videoUrl: string) => {
-    setVideoId(videoId);
-    setVideoUrl(videoUrl);
-    setCurrentSpeed(1.0); // Reset speed when loading new video
-    clearLoopsDisplay(); // Clear any displayed loops and stop looping
-    setSongTags([]); // Clear tags for new video
-    const { defaultVolume } = getVolumeSettings();
-    setVolume(defaultVolume); // Use default volume from settings
-    changeVolume(defaultVolume); // Actually set the player volume
-    setCurrentSong(null); // Clear current song when loading new video
-  }, [clearLoopsDisplay, getVolumeSettings, changeVolume]);
+    // Stop any playing MP3 audio when loading YouTube video
+    if (currentSong && currentSong.url_source === 'mp3') {
+      // Immediately stop audio via global function
+      if ((window as any).stopAudioPlayer) {
+        (window as any).stopAudioPlayer();
+      }
+
+      // Clear the current song to unmount AudioPlayer component
+      setCurrentSong(null);
+
+      // Brief delay to allow AudioPlayer cleanup
+      setTimeout(() => {
+        setVideoId(videoId);
+        setVideoUrl(videoUrl);
+        setCurrentSpeed(1.0); // Reset speed when loading new video
+        clearLoopsDisplay(); // Clear any displayed loops and stop looping
+        setSongTags([]); // Clear tags for new video
+        const { defaultVolume } = getVolumeSettings();
+        setVolume(defaultVolume); // Use default volume from settings
+        changeVolume(defaultVolume); // Actually set the player volume
+      }, 100);
+    } else {
+      setVideoId(videoId);
+      setVideoUrl(videoUrl);
+      setCurrentSpeed(1.0); // Reset speed when loading new video
+      clearLoopsDisplay(); // Clear any displayed loops and stop looping
+      setSongTags([]); // Clear tags for new video
+      const { defaultVolume } = getVolumeSettings();
+      setVolume(defaultVolume); // Use default volume from settings
+      changeVolume(defaultVolume); // Actually set the player volume
+      setCurrentSong(null); // Clear current song when loading new video
+    }
+  }, [clearLoopsDisplay, getVolumeSettings, changeVolume, currentSong]);
 
   const addTag = useCallback(async (tag: string) => {
     const trimmedTag = tag.trim();
@@ -456,16 +479,13 @@ function App() {
   }, [videoId, videoUrl, duration, loops, songTags, showToastNotification, fetchVideoTitle, saveSong, checkUrlExists]);
 
   const handleSongSelect = useCallback(async (songId: string, songUrl: string) => {
-    console.log('🎵 handleSongSelect: Called with songId:', songId, 'songUrl:', songUrl);
 
     // First, load the full song data to determine the type
     try {
       const songData = await findSongById(songId);
-      console.log('🎵 Full song data loaded:', songData);
 
       if (songData?.url_source === 'mp3' || songUrl === null) {
         // Handle MP3 file
-        console.log('handleSongSelect: Loading MP3 file');
 
         // Stop YouTube player if it's currently playing
         if (playerRef.current) {
@@ -483,15 +503,11 @@ function App() {
         }
 
         // Load tags for this song
-        console.log('Loading tags for song:', songData?.id, 'tags_json:', songData?.tags_json);
         try {
           const songTags = JSON.parse(songData.tags_json || '[]');
-          console.log('Parsed tags:', songTags);
           if (Array.isArray(songTags)) {
             setSongTags(songTags);
-            console.log('Set tags to:', songTags);
           } else {
-            console.log('Tags not array, clearing');
             setSongTags([]);
           }
         } catch (tagError) {
@@ -504,52 +520,92 @@ function App() {
       } else {
         // Handle YouTube video
         const id = extractVideoId(songUrl);
-        console.log('handleSongSelect: Extracted video ID:', id);
 
         if (id) {
-          console.log('handleSongSelect: Loading video with ID:', id);
-
           // Stop any playing MP3 audio when switching to YouTube video
-          // Force AudioPlayer to cleanup by temporarily clearing currentSong
           const previousSong = currentSong;
+
+          // Always try to stop any audio, regardless of currentSong state
+          if ((window as any).stopAudioPlayer) {
+            (window as any).stopAudioPlayer();
+          }
+
+          // Also stop all HTML audio elements on the page
+          const allAudioElements = document.querySelectorAll('audio');
+          allAudioElements.forEach((audio) => {
+            audio.pause();
+            audio.currentTime = 0;
+          });
+
           if (previousSong && previousSong.url_source === 'mp3') {
+            // Immediately stop audio via global function
+            if ((window as any).stopAudioPlayer) {
+              (window as any).stopAudioPlayer();
+            }
+
+            // Clear current song to unmount AudioPlayer
             setCurrentSong(null);
-            // Brief delay to allow AudioPlayer cleanup, then set the new song
-            setTimeout(() => {
+
+            // Delay YouTube loading to allow proper MP3 cleanup
+            setTimeout(async () => {
+
+              setVideoId(id);
+              setVideoUrl(songUrl);
+              setCurrentSpeed(1.0);
+
+              // Stop any active looping when switching songs
+              if (isLooping) {
+                toggleLooping();
+              }
+
+              // Load segments for this specific song
+              await loadSegmentsForRoutine(songId);
+
               setCurrentSong(songData);
+
+              // Set volume based on settings
+              const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
+              const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
+              setVolume(volumeToUse);
+              changeVolume(volumeToUse);
+            }, 100);
+
+          } else {
+            // No MP3 detected in currentSong state, but we already stopped all audio above
+            // Clear currentSong to ensure clean state
+            setCurrentSong(null);
+
+            // Brief delay to ensure any cleanup completes
+            setTimeout(async () => {
+
+              setVideoId(id);
+              setVideoUrl(songUrl);
+              setCurrentSpeed(1.0);
+
+              // Stop any active looping when switching songs
+              if (isLooping) {
+                toggleLooping();
+              }
+
+              // Load segments for this specific song
+              await loadSegmentsForRoutine(songId);
+
+              setCurrentSong(songData);
+
+              // Set volume based on settings
+              const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
+              const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
+              setVolume(volumeToUse);
+              changeVolume(volumeToUse);
             }, 50);
           }
 
-          setVideoId(id);
-          setVideoUrl(songUrl);
-          setCurrentSpeed(1.0);
-
-          // Stop any active looping when switching songs
-          if (isLooping) {
-            toggleLooping();
-          }
-
-          // Load segments for this specific song (this will replace any existing segments)
-          await loadSegmentsForRoutine(songId);
-
-          setCurrentSong(songData);
-
-          // Set volume based on settings
-          const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
-          const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
-          setVolume(volumeToUse);
-          changeVolume(volumeToUse); // Actually set the player volume
-
           // Load tags for this song
-          console.log('Loading tags for song:', songData?.id, 'tags_json:', songData?.tags_json);
           try {
             const songTags = JSON.parse(songData.tags_json || '[]');
-            console.log('Parsed tags:', songTags);
             if (Array.isArray(songTags)) {
               setSongTags(songTags);
-              console.log('Set tags to:', songTags);
             } else {
-              console.log('Tags not array, clearing');
               setSongTags([]);
             }
           } catch (tagError) {
@@ -559,7 +615,6 @@ function App() {
 
           showToastNotification('Song loaded successfully! 🎵');
         } else {
-          console.error('handleSongSelect: Could not extract video ID from URL:', songUrl);
           showToastNotification(`Invalid YouTube URL: "${songUrl}". Please edit the song and add a valid YouTube URL.`);
         }
       }
