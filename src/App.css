@@ -64,6 +64,12 @@
   margin-bottom: 16px;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 h1 {
   margin: 0;
   color: #333;
@@ -88,6 +94,33 @@ h1 {
   background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* MP3 Library Container */
+.mp3-library-container {
+  width: 100%;
+  min-height: 400px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.upload-mp3-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.upload-mp3-button:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .url-form {
@@ -759,7 +792,7 @@ kbd {
   }
 }
 
-/* Copy Link Button and Download MP3 Button */
+/* Copy Link Button */
 .video-controls-top {
   display: flex;
   justify-content: flex-end;
@@ -768,8 +801,7 @@ kbd {
   padding: 0 4px;
 }
 
-.copy-link-btn,
-.download-mp3-btn {
+.copy-link-btn {
   background: none;
   border: none;
   color: #6b7280;
@@ -783,61 +815,24 @@ kbd {
   gap: 2px;
 }
 
-.copy-link-btn:hover,
-.download-mp3-btn:hover:not(:disabled) {
+.copy-link-btn:hover {
   background: #f3f4f6;
   color: #374151;
   transform: scale(1.05);
 }
 
-.copy-link-btn:active,
-.download-mp3-btn:active:not(:disabled) {
+.copy-link-btn:active {
   transform: scale(0.95);
-}
-
-.download-mp3-btn {
-  color: #059669;
-}
-
-.download-mp3-btn:hover:not(:disabled) {
-  background: #ecfdf5;
-  color: #047857;
-}
-
-.download-mp3-btn:disabled {
-  color: #9ca3af;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.download-mp3-btn:disabled:hover {
-  transform: none;
-  background: none;
 }
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  .copy-link-btn,
-  .download-mp3-btn {
+  .copy-link-btn {
     color: #9ca3af;
   }
 
-  .copy-link-btn:hover,
-  .download-mp3-btn:hover:not(:disabled) {
+  .copy-link-btn:hover {
     background: #374151;
     color: #d1d5db;
-  }
-
-  .download-mp3-btn {
-    color: #10b981;
-  }
-
-  .download-mp3-btn:hover:not(:disabled) {
-    background: #065f46;
-    color: #6ee7b7;
-  }
-
-  .download-mp3-btn:disabled {
-    color: #6b7280;
   }
 }

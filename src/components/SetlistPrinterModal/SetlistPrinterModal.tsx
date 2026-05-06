@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { Modal } from '../Modal/Modal';
-import { SongRoutine } from '../../repositories/songRoutineRepository';
 import { useSavedSongs } from '../../hooks/useSavedSongs';
 import { useCustomFields } from '../../hooks/useCustomFields';
 import { parseUserSongData } from '../../utils/userSongData';
@@ -17,7 +16,7 @@ export function SetlistPrinterModal({ isOpen, onClose }: SetlistPrinterModalProp
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const { songs, loading } = useSavedSongs();
+  const { songs } = useSavedSongs();
   const { fields: customFields } = useCustomFields();
 
   // Get all unique tags
@@ -312,7 +311,7 @@ export function SetlistPrinterModal({ isOpen, onClose }: SetlistPrinterModalProp
       }
     } catch (error) {
       console.error('Error generating setlist:', error);
-      alert(`❌ Error generating setlist: ${error.message || error}`);
+      alert(`❌ Error generating setlist: ${(error as Error).message || String(error)}`);
     } finally {
       // Add delay before resetting to ensure user sees the generating state
       setTimeout(() => {

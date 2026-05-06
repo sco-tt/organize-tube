@@ -69,7 +69,7 @@ describe('Video Load and Copy Link Integration', () => {
     // - Missing showToastNotification in dependency array
     // - This would fail with "Cannot access before initialization"
 
-    const { getByText, getByTestId, queryByTestId } = render(<TestVideoComponent />);
+    const { getByText, getByTestId } = render(<TestVideoComponent />);
 
     // Load video to make copy link button appear
     fireEvent.click(getByText('Load Video'));
@@ -98,7 +98,7 @@ describe('Video Load and Copy Link Integration', () => {
     // dependencies are missing, which can lead to stale closures and initialization errors
 
     const TestWithMissingDep = () => {
-      const [url, setUrl] = React.useState('');
+      const [url] = React.useState('');
 
       // Missing showToast in dependencies - React would warn about this
       const copyLink = React.useCallback(async () => {

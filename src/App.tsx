@@ -5,9 +5,12 @@ import { SidebarTabs } from "./components/SidebarTabs/SidebarTabs";
 import { InstructionsModal } from "./components/InstructionsModal/InstructionsModal";
 import { SpeedControlModal } from "./components/SpeedControlModal/SpeedControlModal";
 import { LoadVideoModal } from "./components/LoadVideoModal/LoadVideoModal";
+import { Mp3UploadModal } from "./components/Mp3UploadModal/Mp3UploadModal";
+import { Mp3Library } from "./components/Mp3Library/Mp3Library";
 import { MySongsModal } from "./components/MySongsModal/MySongsModal";
 import { CustomFieldsModal } from "./components/CustomFieldsModal/CustomFieldsModal";
 import { ToolsModal } from "./components/ToolsModal/ToolsModal";
+import { AudioPlayer } from "./components/AudioPlayer/AudioPlayer";
 import { SetlistPrinterModal } from "./components/SetlistPrinterModal/SetlistPrinterModal";
 import { SongInfoPanel } from "./components/SongInfoPanel/SongInfoPanel";
 import { Toast } from "./components/Toast/Toast";
@@ -18,7 +21,6 @@ import { useSavedSongs } from "./hooks/useSavedSongs";
 import { TagAutocomplete } from "./components/TagAutocomplete/TagAutocomplete";
 import { TagsService } from "./services/tagsService";
 import { SongRoutine } from "./repositories/songRoutineRepository";
-import { Mp3DownloadService } from "./services/mp3DownloadService";
 // Inline video ID extraction function
 function extractVideoId(url: string): string {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -38,6 +40,7 @@ function App() {
   const instructionsModal = useModal();
   const speedModal = useModal();
   const loadVideoModal = useModal();
+  const mp3UploadModal = useModal();
   const mySongsModal = useModal();
   const customFieldsModal = useModal();
   const toolsModal = useModal();
@@ -53,9 +56,8 @@ function App() {
   const [newTag, setNewTag] = useState('');
   const [volume, setVolume] = useState(100);
   const [currentSong, setCurrentSong] = useState<SongRoutine | null>(null);
+  const [mp3LibraryRefresh, setMp3LibraryRefresh] = useState(0);
 
-  const [isMp3DownloadEnabled, setIsMp3DownloadEnabled] = useState(false);
-  const [isDownloadingMp3, setIsDownloadingMp3] = useState(false);
 
   const playerRef = useRef<YouTubePlayerHandle>(null);
 
@@ -98,13 +100,11 @@ function App() {
     updateLoop,
     selectLoop,
     toggleLooping,
-    clearLoops,
     clearLoopsDisplay,
     clearTempPoints,
     changeTempStart,
     changeTempEnd,
-    loadSegmentsForRoutine,
-    loadStandaloneSegments
+    loadSegmentsForRoutine
   } = useLoopControlsSQLite({ playerRef, isPlaying });
 
   // Wrapper function to match the LoopControls interface
@@ -205,40 +205,6 @@ function App() {
     }
   }, [videoUrl, showToastNotification]);
 
-  // Download video as MP3
-  const handleDownloadMp3 = useCallback(async () => {
-    if (!videoUrl || !isMp3DownloadEnabled) return;
-
-    setIsDownloadingMp3(true);
-
-    try {
-      const downloadService = Mp3DownloadService.getInstance();
-
-      // Generate filename from current song data or video title
-      const filename = currentSong?.title || currentSong?.name || `youtube_${videoId}`;
-
-      showToastNotification('🎵 Starting MP3 download...');
-
-      const result = await downloadService.downloadMp3(videoUrl, filename);
-
-      if (result.success) {
-        showToastNotification('✅ MP3 download completed!');
-
-        // Optionally, add the downloaded MP3 to the song database
-        if (currentSong && result.filePath) {
-          // Could add a local_file_path field to the song record
-          console.log('MP3 downloaded to:', result.filePath);
-        }
-      } else {
-        showToastNotification(`❌ Download failed: ${result.message}`);
-      }
-    } catch (error) {
-      console.error('MP3 download error:', error);
-      showToastNotification('❌ Download failed with unknown error');
-    } finally {
-      setIsDownloadingMp3(false);
-    }
-  }, [videoUrl, videoId, currentSong, isMp3DownloadEnabled, showToastNotification]);
 
   const handleSetLoopStartShortcut = useCallback(() => {
     const time = Math.floor(currentTime * 100) / 100;
@@ -312,21 +278,6 @@ function App() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Check if MP3 download feature is enabled
-  useEffect(() => {
-    const checkMp3Feature = async () => {
-      try {
-        const downloadService = Mp3DownloadService.getInstance();
-        const isEnabled = await downloadService.isDownloadEnabled();
-        setIsMp3DownloadEnabled(isEnabled);
-      } catch (error) {
-        console.error('Failed to check MP3 download feature:', error);
-        setIsMp3DownloadEnabled(false);
-      }
-    };
-
-    checkMp3Feature();
-  }, []);
 
 
   const handleVideoLoad = useCallback((videoId: string, videoUrl: string) => {
@@ -506,40 +457,35 @@ function App() {
 
   const handleSongSelect = useCallback(async (songId: string, songUrl: string) => {
     console.log('🎵 handleSongSelect: Called with songId:', songId, 'songUrl:', songUrl);
-    const id = extractVideoId(songUrl);
-    console.log('handleSongSelect: Extracted video ID:', id);
 
-    if (id) {
-      console.log('handleSongSelect: Loading video with ID:', id);
-      setVideoId(id);
-      setVideoUrl(songUrl);
-      setCurrentSpeed(1.0);
+    // First, load the full song data to determine the type
+    try {
+      const songData = await findSongById(songId);
+      console.log('🎵 Full song data loaded:', songData);
 
-      // Stop any active looping when switching songs
-      if (isLooping) {
-        toggleLooping();
-      }
+      if (songData?.url_source === 'mp3' || songUrl === null) {
+        // Handle MP3 file
+        console.log('handleSongSelect: Loading MP3 file');
 
-      // Load segments for this specific song (this will replace any existing segments)
-      await loadSegmentsForRoutine(songId);
+        // Stop YouTube player if it's currently playing
+        if (playerRef.current) {
+          playerRef.current.pauseVideo();
+        }
 
-      // Load the full song data
-      try {
-        const songData = await findSongById(songId);
-        console.log('🎵 Full song data loaded:', songData);
-        console.log('🎵 songData.tags_json:', songData?.tags_json);
+        setVideoId(''); // Clear video ID since this is MP3
+        setVideoUrl(''); // Clear video URL since this is MP3
         setCurrentSong(songData);
+        setCurrentSpeed(1.0);
 
-        // Set volume based on settings
-        const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
-        const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
-        setVolume(volumeToUse);
-        changeVolume(volumeToUse); // Actually set the player volume
+        // Stop any active looping when switching songs
+        if (isLooping) {
+          toggleLooping();
+        }
 
         // Load tags for this song
         console.log('Loading tags for song:', songData?.id, 'tags_json:', songData?.tags_json);
         try {
-          const songTags = JSON.parse(songData?.tags_json || '[]');
+          const songTags = JSON.parse(songData.tags_json || '[]');
           console.log('Parsed tags:', songTags);
           if (Array.isArray(songTags)) {
             setSongTags(songTags);
@@ -552,15 +498,75 @@ function App() {
           console.warn('Failed to parse song tags:', tagError);
           setSongTags([]);
         }
-      } catch (error) {
-        console.error('Failed to load song data:', error);
-        setSongTags([]); // Clear tags if song loading fails
-      }
 
-      showToastNotification('Song loaded successfully! 🎵');
-    } else {
-      console.error('handleSongSelect: Could not extract video ID from URL:', songUrl);
-      showToastNotification(`Invalid YouTube URL: "${songUrl}". Please edit the song and add a valid YouTube URL.`);
+        showToastNotification('🎵 MP3 loaded successfully!');
+
+      } else {
+        // Handle YouTube video
+        const id = extractVideoId(songUrl);
+        console.log('handleSongSelect: Extracted video ID:', id);
+
+        if (id) {
+          console.log('handleSongSelect: Loading video with ID:', id);
+
+          // Stop any playing MP3 audio when switching to YouTube video
+          // Force AudioPlayer to cleanup by temporarily clearing currentSong
+          const previousSong = currentSong;
+          if (previousSong && previousSong.url_source === 'mp3') {
+            setCurrentSong(null);
+            // Brief delay to allow AudioPlayer cleanup, then set the new song
+            setTimeout(() => {
+              setCurrentSong(songData);
+            }, 50);
+          }
+
+          setVideoId(id);
+          setVideoUrl(songUrl);
+          setCurrentSpeed(1.0);
+
+          // Stop any active looping when switching songs
+          if (isLooping) {
+            toggleLooping();
+          }
+
+          // Load segments for this specific song (this will replace any existing segments)
+          await loadSegmentsForRoutine(songId);
+
+          setCurrentSong(songData);
+
+          // Set volume based on settings
+          const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
+          const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
+          setVolume(volumeToUse);
+          changeVolume(volumeToUse); // Actually set the player volume
+
+          // Load tags for this song
+          console.log('Loading tags for song:', songData?.id, 'tags_json:', songData?.tags_json);
+          try {
+            const songTags = JSON.parse(songData.tags_json || '[]');
+            console.log('Parsed tags:', songTags);
+            if (Array.isArray(songTags)) {
+              setSongTags(songTags);
+              console.log('Set tags to:', songTags);
+            } else {
+              console.log('Tags not array, clearing');
+              setSongTags([]);
+            }
+          } catch (tagError) {
+            console.warn('Failed to parse song tags:', tagError);
+            setSongTags([]);
+          }
+
+          showToastNotification('Song loaded successfully! 🎵');
+        } else {
+          console.error('handleSongSelect: Could not extract video ID from URL:', songUrl);
+          showToastNotification(`Invalid YouTube URL: "${songUrl}". Please edit the song and add a valid YouTube URL.`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load song data:', error);
+      setSongTags([]); // Clear tags if song loading fails
+      showToastNotification('❌ Failed to load song');
     }
   }, [isLooping, toggleLooping, loadSegmentsForRoutine, showToastNotification, findSongById, getVolumeSettings, changeVolume]);
 
@@ -594,6 +600,42 @@ function App() {
     }
   }, [updateSong, currentSong, volume, changeVolume, showToastNotification]);
 
+  const handleMp3UploadComplete = useCallback(async (routineId: string) => {
+    try {
+      // Load the uploaded MP3 as the current song
+      const routine = await findSongById(routineId);
+      if (routine) {
+        // For MP3 files, we don't set a videoId (YouTube video ID)
+        // Instead we'll need to handle MP3 playback differently
+        setVideoId(''); // Clear video ID since this is MP3
+        setVideoUrl(''); // Clear video URL since this is MP3
+        setCurrentSong(routine);
+        setCurrentSpeed(1.0);
+
+        // Load tags for this song
+        try {
+          const songTags = JSON.parse(routine.tags_json || '[]');
+          if (Array.isArray(songTags)) {
+            setSongTags(songTags);
+          } else {
+            setSongTags([]);
+          }
+        } catch (tagError) {
+          console.warn('Failed to parse song tags:', tagError);
+          setSongTags([]);
+        }
+
+        showToastNotification('🎵 MP3 uploaded and loaded successfully!');
+      }
+
+      // Trigger MP3 library refresh
+      setMp3LibraryRefresh(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to load uploaded MP3:', error);
+      showToastNotification('❌ Failed to load uploaded MP3');
+    }
+  }, [findSongById, showToastNotification]);
+
 
   return (
     <div className="app-container" tabIndex={0}>
@@ -601,13 +643,22 @@ function App() {
         <main className="main-content">
           <div className="app-header">
             <h1>Segment Studio</h1>
-            <button
-              onClick={loadVideoModal.open}
-              className="load-video-button"
-              type="button"
-            >
-              📹 Load Video
-            </button>
+            <div className="header-buttons">
+              <button
+                onClick={loadVideoModal.open}
+                className="load-video-button"
+                type="button"
+              >
+                📹 Load Video
+              </button>
+              <button
+                onClick={mp3UploadModal.open}
+                className="upload-mp3-button"
+                type="button"
+              >
+                🎵 Upload MP3
+              </button>
+            </div>
           </div>
 
           <div className="video-section">
@@ -871,16 +922,6 @@ function App() {
                     >
                       🔗 copy link
                     </button>
-                    {isMp3DownloadEnabled && (
-                      <button
-                        onClick={handleDownloadMp3}
-                        className="download-mp3-btn"
-                        disabled={isDownloadingMp3}
-                        title="Download video as MP3"
-                      >
-                        {isDownloadingMp3 ? '⏳ downloading...' : '⬇️ download mp3'}
-                      </button>
-                    )}
                   </div>
                 )}
                 {videoId ? (
@@ -893,27 +934,24 @@ function App() {
                     onDurationChange={handleDurationChange}
                     onVolumeChange={handleVolumeChange}
                   />
+                ) : currentSong && currentSong.url_source === 'mp3' ? (
+                  <div className="audio-player-container">
+                    <AudioPlayer
+                      title={currentSong.title}
+                      contentType="single_track"
+                      mp3ContentId={currentSong.mp3_content_id}
+                      onError={(error) => {
+                        console.error('AudioPlayer error:', error);
+                        showToastNotification(`❌ Player error: ${error}`);
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <div className="video-placeholder">
-                    <div className="placeholder-content">
-                      <h2>🎯 Welcome to Segment Studio!</h2>
-                      <p>Click "📹 Load Video" above to start practicing music at your own pace.</p>
-                      <p>Perfect for musicians who need to slow down songs to learn difficult passages.</p>
-                      <div className="placeholder-features">
-                        <div className="feature">
-                          <span>🎯</span>
-                          <span>Set precise segments for looping</span>
-                        </div>
-                        <div className="feature">
-                          <span>🐌</span>
-                          <span>Slow down playback speed</span>
-                        </div>
-                        <div className="feature">
-                          <span>⌨️</span>
-                          <span>Use keyboard shortcuts (S/E/R)</span>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="mp3-library-container">
+                    <Mp3Library
+                      onUploadClick={mp3UploadModal.open}
+                      refreshTrigger={mp3LibraryRefresh}
+                    />
                   </div>
                 )}
                 </div>
@@ -984,6 +1022,12 @@ function App() {
         onClose={loadVideoModal.close}
         onVideoLoad={handleVideoLoad}
         currentVideoUrl={videoUrl}
+      />
+
+      <Mp3UploadModal
+        isOpen={mp3UploadModal.isOpen}
+        onClose={mp3UploadModal.close}
+        onUploadComplete={handleMp3UploadComplete}
       />
 
       <MySongsModal

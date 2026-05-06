@@ -26,8 +26,8 @@ vi.mock('../components/EditSongModal/EditSongModal', () => ({
 import { useSavedSongs } from '../hooks/useSavedSongs';
 import { useCustomFields } from '../hooks/useCustomFields';
 
-const mockUseSavedSongs = useSavedSongs as vi.MockedFunction<typeof useSavedSongs>;
-const mockUseCustomFields = useCustomFields as vi.MockedFunction<typeof useCustomFields>;
+const mockUseSavedSongs = useSavedSongs as any;
+const mockUseCustomFields = useCustomFields as any;
 
 describe('MySongsModal - Quick Load and Random Load', () => {
   const mockOnClose = vi.fn();
@@ -85,7 +85,7 @@ describe('MySongsModal - Quick Load and Random Load', () => {
       freeform_notes: '',
       links_json: '[]',
       created_at: '2024-01-03',
-      last_practiced: null,
+      last_practiced: undefined,
       volume: 85
     }
   ];

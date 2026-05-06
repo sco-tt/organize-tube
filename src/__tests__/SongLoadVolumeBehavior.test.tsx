@@ -103,7 +103,6 @@ vi.mock('../services/tagsService', () => ({
 
 // Now import App after mocks are set up
 import App from '../App';
-import { SongRoutine } from '../repositories/songRoutineRepository';
 
 describe('Song Load Volume Behavior', () => {
   const mockLocalStorage = (() => {

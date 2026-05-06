@@ -124,7 +124,7 @@ export function TagAutocomplete({
     }
   }, [showSuggestions, suggestions, selectedIndex, value, onTagAdd, onValueChange, handleSuggestionClick]);
 
-  const handleInputBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+  const handleInputBlur = useCallback((_e: React.FocusEvent<HTMLInputElement>) => {
     // Delay hiding suggestions to allow clicking on them
     setTimeout(() => {
       if (!suggestionsRef.current?.contains(document.activeElement)) {

@@ -59,7 +59,7 @@ export function LoopControls({
 
   // Collapsible sections state
   const [isLoopSettingExpanded, setIsLoopSettingExpanded] = useState(true);
-  const [isSavedLoopsExpanded, setIsSavedLoopsExpanded] = useState(false);
+  const [, setIsSavedLoopsExpanded] = useState(false);
   const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false);
 
   // Auto-expand loops section when temp points are set or loops are saved

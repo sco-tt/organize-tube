@@ -265,7 +265,7 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
                           required={field.is_required}
                         >
                           <option value="">Choose {field.display_name.toLowerCase()}</option>
-                          {field.field_options.split(',').map((option) => (
+                          {field.field_options.map((option: string) => (
                             <option key={option.trim()} value={option.trim()}>
                               {option.trim()}
                             </option>
