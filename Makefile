@@ -1,56 +1,48 @@
-# Organize Tube - YouTube Video Organizer for Practice
-# Makefile for build and development commands
+# Segment Studio Makefile
+APP_NAME = "Segment Studio"
+BUILD_DIR = src-tauri/target/release/bundle/macos
 
-.PHONY: help install dev build open clean
+.PHONY: all help clean-dev build-prod install-app run-prod deploy
 
-# Default target
 help:
-	@echo "Available targets:"
-	@echo "  install     - Install dependencies"
-	@echo "  dev         - Start development server"
-	@echo "  build       - Build the application for production"
-	@echo "  open        - Build and open the application"
-	@echo "  clean       - Clean build artifacts"
-	@echo "  help        - Show this help message"
+	@echo "Segment Studio Build System"
+	@echo "Usage:"
+	@echo "  make deploy     - Build and install app"
+	@echo "  make all        - Build, install, and launch app"
+	@echo "  make build-prod - Build production version"
+	@echo "  make install-app - Install to /Applications"
+	@echo "  make run-prod   - Launch installed app"
 
-# Install dependencies
-install:
-	npm install
+clean-dev:
+	@echo "Stopping dev servers..."
+	@-pkill -f "tauri dev" 2>/dev/null || true
+	@-lsof -ti:1420 | xargs kill -9 2>/dev/null || true
 
-# Start development server
-dev:
-	npm run tauri dev
+close-app:
+	@echo "Closing any running Segment Studio instances..."
+	@-pkill -f "Segment Studio" 2>/dev/null || true
+	@-osascript -e 'tell application "Segment Studio" to quit' 2>/dev/null || true
 
-# Build frontend only
-build-frontend:
-	npm run build
-
-# Build the complete Tauri application
-build:
+build-prod: clean-dev close-app
+	@echo "Building production version..."
 	npm run build
 	npm run tauri build
 
-# Build and open the application
-open: build
-	@echo "Opening Organize Tube..."
-	@if [ -f "src-tauri/target/release/bundle/macos/Organize Tube.app/Contents/MacOS/Organize Tube" ]; then \
-		open "src-tauri/target/release/bundle/macos/Organize Tube.app"; \
-	elif [ -f "src-tauri/target/release/organize-tube" ]; then \
-		./src-tauri/target/release/organize-tube; \
+install-app:
+	@echo "Installing to /Applications..."
+	@if [ -d "$(BUILD_DIR)/Segment Studio.app" ]; then \
+		cp -R "$(BUILD_DIR)/Segment Studio.app" /Applications/; \
+		echo "✓ Installed to /Applications"; \
 	else \
-		echo "Build not found. Make sure the build completed successfully."; \
+		echo "✗ Build not found at $(BUILD_DIR)/Segment Studio.app"; \
+		ls -la "$(BUILD_DIR)/" || echo "Build directory not found"; \
 		exit 1; \
 	fi
 
-# Quick development build and run
-dev-open:
-	npm run tauri dev
+run-prod:
+	@echo "Launching app..."
+	@open "/Applications/Segment Studio.app"
 
-# Clean build artifacts
-clean:
-	rm -rf dist/
-	rm -rf src-tauri/target/
-	rm -rf node_modules/
+deploy: build-prod install-app
 
-# Full clean and reinstall
-reset: clean install
+all: deploy run-prod

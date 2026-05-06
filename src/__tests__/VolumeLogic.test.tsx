@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 
 /**
  * Tests for volume application logic without full component rendering
@@ -21,7 +21,7 @@ describe('Volume Application Logic', () => {
     mockLocalStorage.clear();
 
     // Mock localStorage
-    Object.defineProperty(global, 'localStorage', {
+    Object.defineProperty(globalThis, 'localStorage', {
       value: mockLocalStorage,
       writable: true
     });

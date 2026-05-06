@@ -51,9 +51,15 @@ export function LoopControls({
   const [editStartTime, setEditStartTime] = useState(0);
   const [editEndTime, setEditEndTime] = useState(0);
 
+  // Current loop edit state
+  const [isEditingCurrentLoop, setIsEditingCurrentLoop] = useState(false);
+  const [currentLoopName, setCurrentLoopName] = useState('');
+  const [currentLoopStartTime, setCurrentLoopStartTime] = useState(0);
+  const [currentLoopEndTime, setCurrentLoopEndTime] = useState(0);
+
   // Collapsible sections state
   const [isLoopSettingExpanded, setIsLoopSettingExpanded] = useState(true);
-  const [isSavedLoopsExpanded, setIsSavedLoopsExpanded] = useState(false);
+  const [, setIsSavedLoopsExpanded] = useState(false);
   const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false);
 
   // Auto-expand loops section when temp points are set or loops are saved
@@ -188,6 +194,47 @@ export function LoopControls({
     setEditEndTime(0);
   }, []);
 
+  // Current loop edit handlers
+  const handleStartEditCurrentLoop = useCallback(() => {
+    if (activeLoop && activeLoop.id !== 'temp') {
+      setIsEditingCurrentLoop(true);
+      setCurrentLoopName(activeLoop.name);
+      setCurrentLoopStartTime(activeLoop.start_time);
+      setCurrentLoopEndTime(activeLoop.end_time);
+    }
+  }, [activeLoop]);
+
+  const handleSaveCurrentLoopEdit = useCallback(() => {
+    if (activeLoop && activeLoop.id !== 'temp' && onUpdateLoop) {
+      if (currentLoopEndTime > currentLoopStartTime) {
+        onUpdateLoop(activeLoop.id, currentLoopName, currentLoopStartTime, currentLoopEndTime);
+        setIsEditingCurrentLoop(false);
+      } else {
+        alert('End time must be after start time');
+      }
+    }
+  }, [activeLoop, currentLoopName, currentLoopStartTime, currentLoopEndTime, onUpdateLoop]);
+
+  const handleCancelCurrentLoopEdit = useCallback(() => {
+    setIsEditingCurrentLoop(false);
+    setCurrentLoopName('');
+    setCurrentLoopStartTime(0);
+    setCurrentLoopEndTime(0);
+  }, []);
+
+  const handleRemoveCurrentLoop = useCallback(() => {
+    if (activeLoop && activeLoop.id !== 'temp') {
+      // Stop the loop first
+      if (isLooping) {
+        onToggleLoop();
+      }
+      // Clear active loop
+      onSelectLoop(null);
+      // Delete the loop
+      onDeleteLoop(activeLoop.id);
+    }
+  }, [activeLoop, isLooping, onToggleLoop, onSelectLoop, onDeleteLoop]);
+
   const hasValidTempLoop = tempStart !== null && tempEnd !== null && tempEnd > tempStart;
 
   return (
@@ -211,10 +258,71 @@ export function LoopControls({
       {/* Current Loop Info */}
       <div className={`current-loop ${activeLoop ? 'active' : 'inactive'}`}>
         {activeLoop ? (
-          <div className="loop-info">
-            <strong>{activeLoop.name}</strong>
-            <span>{formatTime(activeLoop.start_time)} → {formatTime(activeLoop.end_time)}</span>
-          </div>
+          isEditingCurrentLoop ? (
+            <div className="current-loop-edit">
+              <div className="current-edit-badge">EDITING CURRENT</div>
+              <div className="edit-loop-info">
+                <div className="edit-name-section">
+                  <input
+                    type="text"
+                    placeholder="Loop name"
+                    value={currentLoopName}
+                    onChange={(e) => setCurrentLoopName(e.target.value)}
+                    className="edit-name-input"
+                  />
+                </div>
+                <div className="edit-loop-times">
+                  <div className="temp-time-row">
+                    <span className="time-label">Start:</span>
+                    <EditableTime
+                      timeInSeconds={currentLoopStartTime}
+                      onTimeChange={setCurrentLoopStartTime}
+                      className="time-value"
+                    />
+                  </div>
+                  <div className="temp-time-row">
+                    <span className="time-label">End:</span>
+                    <EditableTime
+                      timeInSeconds={currentLoopEndTime}
+                      onTimeChange={setCurrentLoopEndTime}
+                      className="time-value"
+                    />
+                    <span className="temp-duration-inline">
+                      <span className="duration-label">Duration:</span>
+                      <span className="duration-value">{formatTime(currentLoopEndTime - currentLoopStartTime)}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="current-loop-actions">
+                <button onClick={handleSaveCurrentLoopEdit} className="temp-save">
+                  💾 Save
+                </button>
+                <button onClick={handleCancelCurrentLoopEdit} className="temp-delete">
+                  ✕ Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="loop-info">
+              <div className="current-loop-display">
+                <strong>{activeLoop.name}</strong>
+                <span>{formatTime(activeLoop.start_time)} → {formatTime(activeLoop.end_time)}</span>
+              </div>
+              <div className="current-loop-controls">
+                {activeLoop.id !== 'temp' && (
+                  <>
+                    <button onClick={handleStartEditCurrentLoop} className="edit-current" title="Edit current loop">
+                      ✏️
+                    </button>
+                    <button onClick={handleRemoveCurrentLoop} className="remove-current" title="Remove current loop">
+                      🗑️
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )
         ) : (
           <div className="loop-info placeholder">
             <span>&nbsp;</span>
@@ -344,126 +452,112 @@ export function LoopControls({
         </div>
       )}
 
-      {/* Saved Loops List */}
+      {/* All Loops List */}
       {loops.length > 0 && (
-        <div className="collapsible-section">
-          <button
-            className="section-header"
-            onClick={() => setIsSavedLoopsExpanded(!isSavedLoopsExpanded)}
-          >
-            <span>💾 Saved Loops ({loops.length})</span>
-            <span className={`expand-icon ${isSavedLoopsExpanded ? 'expanded' : ''}`}>▼</span>
-          </button>
-
-          {isSavedLoopsExpanded && (
-            <div className="saved-loops">
-              <div className="loops-list">
-                {loops.map((loop) => (
-                  <div key={loop.id} className={`loop-item ${loop.id === activeLoop?.id ? 'active' : ''}`}>
-                    {editingLoopId === loop.id ? (
-                      // Edit Mode - Reuse the same UI as temp loop creation
-                      <>
-                        <div className="edit-loop-badge">EDITING</div>
-                        <div className="edit-loop-info">
-                          <div className="edit-name-section">
-                            <input
-                              type="text"
-                              placeholder="Loop name (e.g., 'Verse 1', 'Solo')"
-                              value={editLoopName}
-                              onChange={(e) => setEditLoopName(e.target.value)}
-                              className="edit-name-input"
-                            />
-                          </div>
-                          <div className="edit-loop-times">
-                            <div className="temp-time-row">
-                              <span className="time-label">Start:</span>
-                              <EditableTime
-                                timeInSeconds={editStartTime}
-                                onTimeChange={setEditStartTime}
-                                className="time-value"
-                              />
-                            </div>
-                            <div className="temp-time-row">
-                              <span className="time-label">End:</span>
-                              <EditableTime
-                                timeInSeconds={editEndTime}
-                                onTimeChange={setEditEndTime}
-                                className="time-value"
-                              />
-                              <span className="temp-duration-inline">
-                                <span className="duration-label">Duration:</span>
-                                <span className="duration-value">{formatTime(editEndTime - editStartTime)}</span>
-                              </span>
-                            </div>
-                          </div>
+        <div className="all-loops-section">
+          <h4>💾 All Loops ({loops.length})</h4>
+          <div className="all-loops-list">
+            {loops.map((loop) => (
+              <div key={loop.id} className={`loop-item ${loop.id === activeLoop?.id ? 'currently-playing' : ''}`}>
+                {editingLoopId === loop.id ? (
+                  // Edit Mode
+                  <>
+                    <div className="edit-loop-badge">EDITING</div>
+                    <div className="edit-loop-info">
+                      <div className="edit-name-section">
+                        <input
+                          type="text"
+                          placeholder="Loop name"
+                          value={editLoopName}
+                          onChange={(e) => setEditLoopName(e.target.value)}
+                          className="edit-name-input"
+                        />
+                      </div>
+                      <div className="edit-loop-times">
+                        <div className="temp-time-row">
+                          <span className="time-label">Start:</span>
+                          <EditableTime
+                            timeInSeconds={editStartTime}
+                            onTimeChange={setEditStartTime}
+                            className="time-value"
+                          />
                         </div>
-                        <div className="edit-loop-actions">
-                          <button onClick={handleSaveEdit} className="temp-save">
-                            💾 Save
-                          </button>
-                          <button onClick={handleCancelEdit} className="temp-delete">
-                            ✕ Cancel
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      // Normal Display Mode
-                      <>
-                        <div className="saved-loop-badge">SAVED</div>
-                        <div className="loop-details">
-                          <span className="loop-name">{loop.name}</span>
-                          <span className="loop-time">
-                            {formatTime(loop.start_time)} → {formatTime(loop.end_time)}
+                        <div className="temp-time-row">
+                          <span className="time-label">End:</span>
+                          <EditableTime
+                            timeInSeconds={editEndTime}
+                            onTimeChange={setEditEndTime}
+                            className="time-value"
+                          />
+                          <span className="temp-duration-inline">
+                            <span className="duration-label">Duration:</span>
+                            <span className="duration-value">{formatTime(editEndTime - editStartTime)}</span>
                           </span>
                         </div>
-                        <div className="loop-actions">
-                          <button
-                            onClick={() => onSelectLoop(loop)}
-                            className="select-loop"
-                            title="Select this segment"
-                          >
-                            ▶️
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (activeLoop?.id === loop.id && isLooping) {
-                                handleStopLoop(); // Stop and exit to full video
-                              } else {
-                                handlePlayLoop(loop); // Start looping this segment
-                              }
-                            }}
-                            className={`loop-toggle-btn ${activeLoop?.id === loop.id && isLooping ? 'active' : ''}`}
-                            title={activeLoop?.id === loop.id && isLooping ? "Stop and play full video" : "Start looping this segment"}
-                          >
-                            {activeLoop?.id === loop.id && isLooping ? '⏹️' : '🔁'}
-                          </button>
-                          <button
-                            onClick={() => handleStartEdit(loop)}
-                            className="edit-loop"
-                            title="Edit this segment"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => onDeleteLoop(loop.id)}
-                            className="delete-loop"
-                            title="Delete this segment"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+                      </div>
+                    </div>
+                    <div className="edit-loop-actions">
+                      <button onClick={handleSaveEdit} className="temp-save">
+                        💾 Save
+                      </button>
+                      <button onClick={handleCancelEdit} className="temp-delete">
+                        ✕ Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  // Normal Display Mode
+                  <>
+                    <div className={`loop-badge ${loop.id === activeLoop?.id ? 'playing' : 'saved'}`}>
+                      {loop.id === activeLoop?.id ? 'PLAYING' : 'SAVED'}
+                    </div>
+                    <div className="loop-details">
+                      <span className="loop-name">{loop.name}</span>
+                      <span className="loop-time">
+                        {formatTime(loop.start_time)} → {formatTime(loop.end_time)}
+                      </span>
+                    </div>
+                    <div className="loop-actions">
+                      <button
+                        onClick={() => onSelectLoop(loop)}
+                        className="select-loop"
+                        title="Select this segment"
+                      >
+                        ▶️
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (activeLoop?.id === loop.id && isLooping) {
+                            handleStopLoop();
+                          } else {
+                            handlePlayLoop(loop);
+                          }
+                        }}
+                        className={`loop-toggle-btn ${activeLoop?.id === loop.id && isLooping ? 'active' : ''}`}
+                        title={activeLoop?.id === loop.id && isLooping ? "Stop loop" : "Start looping"}
+                      >
+                        {activeLoop?.id === loop.id && isLooping ? '⏹️' : '🔁'}
+                      </button>
+                      <button
+                        onClick={() => handleStartEdit(loop)}
+                        className="edit-loop"
+                        title="Edit this segment"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => onDeleteLoop(loop.id)}
+                        className="delete-loop"
+                        title="Delete this segment"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
-              {activeLoop && (
-                <button onClick={() => onSelectLoop(null)} className="clear-selection">
-                  Exit Loop
-                </button>
-              )}
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
 

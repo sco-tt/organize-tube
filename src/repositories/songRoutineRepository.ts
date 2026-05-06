@@ -5,27 +5,35 @@ export interface SongRoutine {
   url: string;
   url_source: string;
   title: string;
+  name: string;
   artist: string;
   duration: number;
   notes: string;
   freeform_notes: string;
   volume: number;
   tags_json?: string;
+  loops_json?: string;
+  steps_json?: string;
+  links_json?: string;
   created_at: string;
   last_practiced?: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface CreateSongRoutine {
   url: string;
   url_source?: string;
   title?: string;
+  name?: string;
   artist?: string;
   duration?: number;
   notes?: string;
   freeform_notes?: string;
   volume?: number;
   tags_json?: string;
+  loops_json?: string;
+  steps_json?: string;
+  links_json?: string;
 }
 
 export interface Tag {

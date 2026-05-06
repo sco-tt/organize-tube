@@ -1,3 +1,4 @@
 fn main() {
-    tauri_build::build()
+    // Run the standard Tauri build process
+    tauri_build::build();
 }

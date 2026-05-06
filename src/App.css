@@ -64,6 +64,12 @@
   margin-bottom: 16px;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 h1 {
   margin: 0;
   color: #333;
@@ -88,6 +94,33 @@ h1 {
   background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* MP3 Library Container */
+.mp3-library-container {
+  width: 100%;
+  min-height: 400px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.upload-mp3-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.upload-mp3-button:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .url-form {
@@ -763,6 +796,7 @@ kbd {
 .video-controls-top {
   display: flex;
   justify-content: flex-end;
+  gap: 6px;
   margin-bottom: 8px;
   padding: 0 4px;
 }

@@ -12,7 +12,7 @@ export function Metronome({ className }: MetronomeProps) {
   const [timeSignature, setTimeSignature] = useState(4);
   const [volume, setVolume] = useState(75);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   // Initialize audio context

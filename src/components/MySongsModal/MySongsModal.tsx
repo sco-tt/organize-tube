@@ -5,7 +5,6 @@ import { useSavedSongs } from '../../hooks/useSavedSongs';
 import { useCustomFields } from '../../hooks/useCustomFields';
 import { SongRoutine } from '../../repositories/songRoutineRepository';
 import { CSVImportService, ImportResult } from '../../services/csvImportService';
-import { parseUserSongData, formatUserSongDataForDisplay } from '../../utils/userSongData';
 import './MySongsModal.css';
 
 interface MySongsModalProps {
@@ -42,8 +41,7 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
   } = useSavedSongs();
 
   const {
-    fields: customFields,
-    loading: customFieldsLoading
+    fields: customFields
   } = useCustomFields();
 
   const formatDuration = (seconds: number): string => {
@@ -695,7 +693,7 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
                         </label>
                         <span className="csv-header">"{csvHeader}"</span>
                         <span className="arrow">→</span>
-                        <span className="song-field">{songField}</span>
+                        <span className="song-field">{String(songField)}</span>
                         <span className="confidence">
                           ({Math.round((csvAnalysis.confidence[csvHeader] || 0) * 100)}% confidence)
                         </span>
